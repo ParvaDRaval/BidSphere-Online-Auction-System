@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listAuctions } from "../api";
 import homeImg from "../assets/home.jpg";
+import ExploreCategories from "./ExploreCategories";
 /* eslint-disable react/prop-types */
 
 function AuctionCard({ auction }) {
@@ -94,6 +95,9 @@ function Home() {
           )}
         </div>
       )}
+
+      <ExploreCategories />
+
     </div>
   );
 }
