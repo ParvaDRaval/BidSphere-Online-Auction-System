@@ -106,7 +106,6 @@ function Navbar() {
 
       <ul className="flex space-x-6 font-medium">
         <li><Link to="/categories">Categories</Link></li>
-        <li><Link to="/contact">Contact</Link></li>
         <li><Link to='/create-auction'>Create Auction</Link></li>
 
         {!user && !admin && (

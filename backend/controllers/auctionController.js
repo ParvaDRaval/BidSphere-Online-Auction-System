@@ -179,8 +179,8 @@ async function getAuctionById(req, res) {
     }
 
     const auction=await Auction.findById(auctionId)
-      .populate("createdBy", "name email")
-      .populate("currentWinner", "name email")
+      .populate("createdBy", "username email")
+      .populate("currentWinner", "username email")
       .lean();
 
     if (!auction) {
@@ -208,7 +208,7 @@ async function getAuctionById(req, res) {
       .sort({amount: -1 })
       .limit(10)// top 10 bids fetched rn
       .select("bidderId amount timestamp")
-      .populate("bidderId", "name email")
+      .populate("bidderId", "username email")
       .lean();
 
     return res.status(200).json({
@@ -239,7 +239,7 @@ async function listAuctions(req, res) {
       .skip(skip)
       .limit(Number(limit))
       .select("title item.name item.images startTime endTime currentBid status startingPrice totalBids")
-      .populate("createdBy", "name")
+      .populate("createdBy", "username")
       .lean();
 
     const total = await Auction.countDocuments(filter);

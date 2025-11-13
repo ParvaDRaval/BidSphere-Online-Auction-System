@@ -102,6 +102,7 @@ export const updateAuction = (id, body) => {
 };
 export const deleteAuction = (id) => del(`${BASE_AUCTION}/${id}`);
 export const createAuction = (payload) => postJSON(`${BASE_AUCTION}/create`, payload);
+export const placeBid = (auctionId, amount) => postJSON(`/BidSphere/${auctionId}/bid/place`, { amount });
 export const getMyAuctions = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_AUCTION}/mine${qs ? `?${qs}` : ""}`);
@@ -128,6 +129,7 @@ export async function uploadImagesFormData(formData) {
 export const createUpiOrder = (payload) => postJSON(`${BASE_UPI}/create-order`, payload);
 export const createCodOrder = (payload) => postJSON(`${BASE_UPI}/create-cod`, payload);
 export const getPaymentStatus = (paymentId) => getJSON(`${BASE_UPI}/status/${paymentId}`);
+export const getPayee = () => getJSON(`${BASE_UPI}/payee`);
 export const verifyPayment = (payload) => postJSON(`${BASE_PAYMENTS}/verify-payment`, payload);
 export const listPayments = (queryParams = {}) => {
   const params = new URLSearchParams(queryParams).toString();

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import loginImg from "../assets/login.jpg";
 import { Link, useNavigate } from "react-router-dom";
-import { loginUser } from "../api"; 
+import { loginUser, getCurrentUser } from "../api"; 
 
 function Login() {
   const [form, setForm] = useState({
@@ -42,8 +42,19 @@ function Login() {
     try {
       const res = await loginUser({ email: form.email, password: form.password });
 
+      // store whatever server returned immediately (legacy clients expect this)
       if (res.user) {
         localStorage.setItem("bidsphere_user", JSON.stringify(res.user));
+      }
+
+      // fetch authoritative user from /me and overwrite localStorage if available
+      try {
+        const me = await getCurrentUser();
+        if (me && me.user) {
+          localStorage.setItem("bidsphere_user", JSON.stringify(me.user));
+        }
+      } catch (err) {
+        // ignore - fallback to earlier stored user
       }
 
       alert(res.message || "Logged in successfully");

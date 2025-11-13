@@ -7,15 +7,18 @@ export const createOrder = async (req, res) => {
       amount,
       auctionId,
       bidderId,
-      payeeVpa,
-      payeeName = '',
+      payerVpa,
       note = '',
       expiryMinutes = 60 * 24 * 7,
     } = req.body;
 
-    if (!Number.isInteger(amount) || amount <= 0 || !auctionId || !bidderId || !payeeVpa) {
+    // recipient (site) is fixed from environment
+    const payeeVpa = process.env.PAYEE_VPA || process.env.UPI_PAYEE_VPA || null;
+    const payeeName = process.env.PAYEE_NAME || '';
+
+    if (!Number.isInteger(amount) || amount <= 0 || !auctionId || !bidderId || !payerVpa) {
       return res.status(400).json({
-        error: 'Missing or invalid params: amount (paise integer), auctionId, bidderId, payeeVpa required',
+        error: 'Missing or invalid params: amount (paise integer), auctionId, bidderId, payerVpa required',
       });
     }
 
@@ -32,11 +35,12 @@ export const createOrder = async (req, res) => {
       status: 'PENDING',
       providerStatus: 'pending',
       expiry,
-      metadata: { payeeVpa, payeeName, note },
+      metadata: { payerVpa, payeeVpa, payeeName, note },
     });
 
     await payment.save();
 
+    // Build UPI link/QR that charges the recipient (site) payeeVpa
     const upiLink = upiService.buildUpiDeepLink({
       payeeVpa,
       payeeName,
@@ -324,6 +328,17 @@ export const getPaymentDetails = async (req, res) => {
   } catch (err) {
     console.error('paymentController.getPaymentDetails error:', err);
     return res.status(500).json({ error: err.message || 'Get payment details failed' });
+  }
+};
+
+export const getPayee = async (req, res) => {
+  try {
+    const payeeVpa = process.env.PAYEE_VPA || process.env.UPI_PAYEE_VPA || "";
+    const payeeName = process.env.PAYEE_NAME || "";
+    return res.json({ success: true, payeeVpa, payeeName });
+  } catch (err) {
+    console.error('paymentController.getPayee error:', err);
+    return res.status(500).json({ error: err.message || 'Get payee failed' });
   }
 };
 
