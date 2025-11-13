@@ -16,9 +16,9 @@ import Auctions from "./pages/Auctions";
 import UserDashboard from "./pages/UserDashboard";
 import MyListings from "./pages/MyListings";
 import PayFees from "./pages/PayFees";
-
-
+import UserDashboardBuyer from "./pages/UserDashboardBuyer";
 import Contact from "./pages/contact";
+
 function App() {
   return (
     <div className="bg-[#fdfbf6] min-h-screen">
@@ -33,14 +33,15 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/verifyemail" element={<VerifyEmail />} />
         <Route path="/create-auction" element={<CreateAuction />} />
-  <Route path="/auction/:id" element={<AuctionDetails />} />
-    <Route path="/dashboard" element={<UserDashboard />} />
-  <Route path="/my-listings" element={<MyListings />} />
-    <Route path="/pay-fee" element={<PayFees />} />
-    <Route path="/pay-fee/:auctionId" element={<PayFees />} />
+        <Route path="/auction/:id" element={<AuctionDetails />} />
+        <Route path="/dashboard" element={<UserDashboard />} />
+        <Route path="/my-listings" element={<MyListings />} />
+        <Route path="/pay-fee" element={<PayFees />} />
+        <Route path="/pay-fee/:auctionId" element={<PayFees />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/edit-auction-draft/:id" element={<EditAuctionDraft />} />
+        <Route path="/buyer/dashboard" element={<UserDashboardBuyer />} />
       </Routes>
       <Footer />
     </div>
