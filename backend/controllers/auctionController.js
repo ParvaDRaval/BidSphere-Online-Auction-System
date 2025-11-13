@@ -1,4 +1,4 @@
-import Auction from "../models/Auction.js";
+    import Auction from "../models/Auction.js";
 import Bid from "../models/Bids.js";
 import mongoose from "mongoose";
 import User from "../models/User.js";
@@ -77,7 +77,8 @@ async function createAuction(req, res) {
     const userId=req.user._id;
     const start=new Date(startTime);
     const end=new Date(endTime);
-    const status=determineStatus(start, end);
+    // New auctions start as "YET_TO_BE_VERIFIED" until admin verifies them
+    const status = "YET_TO_BE_VERIFIED";
 
     const auction = await Auction.create({
       title: String(title).trim(),
@@ -91,6 +92,7 @@ async function createAuction(req, res) {
       },
       createdBy: userId,
       status,
+      verified: false,
       startingPrice: Number(startingPrice),
       minIncrement: Number(minIncrement),
       currentBid: 0,
@@ -177,8 +179,8 @@ async function getAuctionById(req, res) {
     }
 
     const auction=await Auction.findById(auctionId)
-      .populate("createdBy", "name email")
-      .populate("currentWinner", "name email")
+      .populate("createdBy", "username email")
+      .populate("currentWinner", "username email")
       .lean();
 
     if (!auction) {
@@ -188,11 +190,25 @@ async function getAuctionById(req, res) {
       });
     }
 
+    // Only allow viewing verified auctions (unless it's the owner)
+    const isOwner = req.user && auction.createdBy && (
+      (typeof auction.createdBy === 'object' && auction.createdBy._id) 
+        ? auction.createdBy._id.toString() === req.user._id.toString()
+        : auction.createdBy.toString() === req.user._id.toString()
+    );
+    
+    if (!auction.verified && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: "This auction is pending verification",
+      });
+    }
+
     const topBids=await Bid.find({auctionId: auction._id })
       .sort({amount: -1 })
       .limit(10)// top 10 bids fetched rn
       .select("bidderId amount timestamp")
-      .populate("bidderId", "name email")
+      .populate("bidderId", "username email")
       .lean();
 
     return res.status(200).json({
@@ -212,7 +228,7 @@ async function listAuctions(req, res) {
   try {
     const { status, category, page = 1, limit = 20, sort = "-createdAt" } = req.query;
 
-    const filter = {};
+    const filter = { verified: true }; // Only show verified auctions to public
     if (status) filter.status = status.toUpperCase();
     if (category) filter["item.category"] = category;
 
@@ -223,7 +239,7 @@ async function listAuctions(req, res) {
       .skip(skip)
       .limit(Number(limit))
       .select("title item.name item.images startTime endTime currentBid status startingPrice totalBids")
-      .populate("createdBy", "name")
+      .populate("createdBy", "username")
       .lean();
 
     const total = await Auction.countDocuments(filter);
