@@ -111,6 +111,22 @@ export const listAuctions = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_AUCTION}${qs ? `?${qs}` : ""}`);
 };
+// derive categories from auctions when backend has no dedicated endpoint
+export const getCategories = async (opts = {}) => {
+  // opts.limit can be supplied; default to 200
+  const limit = typeof opts.limit === "number" ? opts.limit : 200;
+  const res = await listAuctions({ limit });
+  const auctions = res?.auctions || [];
+  const map = new Map();
+  for (const a of auctions) {
+    const name = (a?.item?.category || "Uncategorized").trim();
+    if (!map.has(name)) {
+      const img = a?.item?.images?.[0] || null;
+      map.set(name, { name, image: img });
+    }
+  }
+  return Array.from(map.values());
+};
 export const getCurrentUser = () => getJSON(`${BASE_USER}/me`);
 export const uploadImagesBase64 = (imagesPayload) => postJSON(`${BASE_AUCTION}/upload-base64`, imagesPayload);
 export async function uploadImagesFormData(formData) {
