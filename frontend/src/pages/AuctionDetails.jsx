@@ -139,7 +139,28 @@ function AuctionDetails() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-xs text-gray-500">Status</div>
-                <div className="font-semibold">{auction?.status}</div>
+                <div>
+                  <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
+                    (() => {
+                      const s = auction?.status || "";
+                      switch (String(s).toUpperCase()) {
+                        case "YET_TO_BE_VERIFIED":
+                          return "bg-yellow-100 text-yellow-800";
+                        case "LIVE":
+                          return "bg-green-100 text-green-800";
+                        case "UPCOMING":
+                          return "bg-blue-100 text-blue-800";
+                        case "ENDED":
+                          return "bg-gray-100 text-gray-800";
+                        case "CANCELLED":
+                        case "REMOVED":
+                          return "bg-red-100 text-red-800";
+                        default:
+                          return "bg-gray-100 text-gray-800";
+                      }
+                    })()
+                  }`}> {auction?.status || "N/A"} </span>
+                </div>
               </div>
             </div>
 

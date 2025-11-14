@@ -114,9 +114,17 @@ function Login() {
           </button>
         </form>
 
-        <p className="text-sm text-red-600 mb-2 cursor-pointer">
-          Forgot Password?
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm text-red-600 cursor-pointer">Forgot Password?</p>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/login')}
+            className="text-sm text-gray-600 hover:text-gray-700"
+            style={{ background: 'transparent', border: 'none', padding: 0 }}
+          >
+            Admin Login
+          </button>
+        </div>
         <p>
           Don’t have an account?{" "}
           <Link to="/register" className="text-blue-600">

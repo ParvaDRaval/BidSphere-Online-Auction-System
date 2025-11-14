@@ -15,11 +15,35 @@ function AuctionCard({ auction }) {
 
   return (
     <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
-      {imgSrc ? (
-        <img src={imgSrc} alt={itemName} className="w-full h-40 object-cover" />
-      ) : (
-        <div className="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-500">No image</div>
-      )}
+      <div className="relative">
+        {imgSrc ? (
+          <img src={imgSrc} alt={itemName} className="w-full h-40 object-cover" />
+        ) : (
+          <div className="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-500">No image</div>
+        )}
+        <div className="absolute top-2 right-2">
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+            (() => {
+              const s = (auction && auction.status) || "";
+              switch (String(s).toUpperCase()) {
+                case "YET_TO_BE_VERIFIED":
+                  return "bg-yellow-100 text-yellow-800";
+                case "LIVE":
+                  return "bg-green-100 text-green-800";
+                case "UPCOMING":
+                  return "bg-blue-100 text-blue-800";
+                case "ENDED":
+                  return "bg-gray-100 text-gray-800";
+                case "CANCELLED":
+                case "REMOVED":
+                  return "bg-red-100 text-red-800";
+                default:
+                  return "bg-gray-100 text-gray-800";
+              }
+            })()
+          }`}>{(auction && auction.status) || "N/A"}</span>
+        </div>
+      </div>
       <div className="p-4">
         <div className="text-sm text-gray-500">{auction?.item?.category || "Category"}</div>
         <div className="font-semibold text-lg text-gray-800">{title}</div>
