@@ -26,6 +26,12 @@ connectDB()
     console.error("Database connection failed");
   });
 
+import {startPaymentStatusJob} from "./jobs/paymentStatusJob.js";
+import {startRegistrationStatusJob} from "./jobs/au-registrationStatusJob.js";
+
+startPaymentStatusJob();
+startRegistrationStatusJob();
+
 //middlewares
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(express.json({ limit: "10mb" }));      
@@ -56,10 +62,7 @@ app.use("/BidSphere/:auctionId/bid", bidRoutes);
 
 // Payment Routes
 import paymentRoutes from "./routes/paymentRoutes.js";
-app.use("/bidsphere/admin/payments", restrictAdminIP, paymentRoutes);
+app.use("/bidsphere/auctions", paymentRoutes);
 
-// UPI Payment Routes (public)
-import upiRoutes from "./routes/upiRoutes.js";
-app.use("/bidsphere/upi", upiRoutes);
 
 export default app;

@@ -402,6 +402,37 @@ async function deleteAuction(req, res) {
   }
 }
 
+const handleRegisterInAuction = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const {auctionId} = req.params;
+
+    const auction = await Auction.findById(auctionId);
+    if (!auction) {
+      return res.status(400).json({ success: false, message: "Auction not found" });
+    } 
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // redirect to login page
+      return res.status(400).json({ success: false, message: "User not found" });
+    }
+    
+    if(user._id === auction.createdBy){
+      return res.status(400).json({ success: false, message: "You are seller"});
+    }
+
+    return res.json({
+      success: true,
+      redirectUrl: `/bidsphere/auctions/${auctionId}/au-registration/pay`
+    });
+
+  }
+  catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+}
+
 export {
   createAuction,
   getMyAuctions,
@@ -410,4 +441,5 @@ export {
   editAuction,
   deleteAuction,
   uploadBase64Images,
+  handleRegisterInAuction
 };
