@@ -10,17 +10,17 @@ app.set("trust proxy", true);
 
 //connect to db
 import connectDB from "./services/db.js";
-import { startAuctionStatusUpdater } from "./services/auctionStatusUpdater.js";
+//import { startAuctionStatusUpdater } from "./services/auctionStatusUpdater.js";
 
 const PORT = process.env.PORT || 5000;
 connectDB()
   .then(() => {
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-    const cronPattern = process.env.AUCTION_STATUS_UPDATER_CRON || "*/1 * * * *";
-    startAuctionStatusUpdater({ 
-      cronPattern,
-      runOnStart: true 
-    });
+    //const cronPattern = process.env.AUCTION_STATUS_UPDATER_CRON || "*/1 * * * *";
+    // startAuctionStatusUpdater({ 
+    //   cronPattern,
+    //   runOnStart: true 
+    // });
   })
   .catch((err) => {
     console.error("Database connection failed");
@@ -56,10 +56,7 @@ app.use("/BidSphere/:auctionId/bid", bidRoutes);
 
 // Payment Routes
 import paymentRoutes from "./routes/paymentRoutes.js";
-app.use("/bidsphere/admin/payments", restrictAdminIP, paymentRoutes);
+app.use("/bidsphere/auctions", paymentRoutes);
 
-// UPI Payment Routes (public)
-import upiRoutes from "./routes/upiRoutes.js";
-app.use("/bidsphere/upi", upiRoutes);
 
 export default app;

@@ -1,18 +1,57 @@
 import mongoose from 'mongoose';
 
 const PaymentSchema = new mongoose.Schema({
-  paymentId: { type: String, required: true, unique: true }, 
-  provider: { type: String, enum: ['upi', 'cod'], default: 'upi' },
-  amount: { type: Number, required: true },
-  auctionId: { type: String, required: true },
-  bidderId: { type: String, required: true },
-  status: { type: String, enum: ['PENDING','HOLD','CAPTURED','VOID','FAILED'], default: 'PENDING' },
-  providerStatus: { type: String },
-  expiry: { type: Date },
-  metadata: { type: Object },
+    
+    // payment id - by default id provided by MongoDB
+    provider: { 
+        type: String, 
+        enum: ['upi', 'cod'], 
+        default: 'upi' 
+    },
+    amount: { 
+        type: Number, 
+        required: true 
+    },
+    auctionId: { 
+        type: String, 
+        required: true 
+    },
+    userId: { 
+        type: String, 
+        required: true 
+    },
+    status: { 
+        type: String, 
+        enum: ['PENDING', 'SUCCESS', 'FAILED'], 
+        default: 'PENDING' 
+    },
+    type: {
+        type: String,
+        enum: ['REGISTRATION FEES', 'WINNING PAYMENT']
+    },  
+    upiLink: {
+        type: String,
+        required: true
+    },
+
+    expiry: { 
+        type: Date, 
+        required: true
+    },
+    metadata: { 
+        type: Object 
+    },
+
+    // for admin to verify
+    txnId: {
+        type: String
+    },
+    upiAccountName: {
+        type: String
+    }
+
 }, { timestamps: true });
 
-const Payment = mongoose.model('Payment', PaymentSchema);
+const Payment = mongoose.model('payment', PaymentSchema);
 
 export default Payment;
-

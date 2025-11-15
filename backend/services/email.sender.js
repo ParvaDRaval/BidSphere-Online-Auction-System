@@ -1,7 +1,16 @@
 import transporter  from "./email.transporter.js";
-import { Verification_Email_Template, Welcome_Email_Template, Outbid_Email_Template, Reset_Password_Email_Template } from "./email.template.js";
-
-
+import { Verification_Email_Template, 
+    Welcome_Email_Template, 
+    Outbid_Email_Template, 
+    Reset_Password_Email_Template, 
+    Auction_Winner_Email_Template, 
+    COD_Selected_Email_Template,
+    UPI_Selected_Email_Template,
+    Payment_Verified_Email_Template,
+    Payment_Rejection_Template,
+    PAYMENT_Verification_Request_Sent_Template
+   } from "./email.template.js";
+import QRCode from "qrcode";
 const SendVerificationCode = async (email, verificationCode) => {
     try {
         const response = await transporter.sendMail({
@@ -69,5 +78,141 @@ const SendResetPwdEmail = async (email, resetPwdLink) => {
   }
 };
 
+const SendAuctionWinnerEmail = async (email, name, auctionName) => {
+    try {
+        const htmlContent = Auction_Winner_Email_Template
+            .replace("{name}", name)
+            .replace("{auctionName}", auctionName)
 
-export { SendVerificationCode, WelcomeEmail, SendOutBidEmail, SendResetPwdEmail };
+        const response = await transporter.sendMail({
+            from: "bidsphere.auction@gmail.com",
+            to: email,
+            subject: "You Won the Auction! Choose Your Payment Method",
+            html: htmlContent,
+        });
+
+        console.log("Auction winner mail sent successfully:", response);
+    } catch (error) {
+        console.log("Auction winner mail error:", error);
+    }
+};
+
+const SendCODSelectedEmail = async (email, name, auctionName) => {
+    try {
+        const htmlContent = COD_Selected_Email_Template
+            .replace("{name}", name)
+            .replace("{auctionName}", auctionName);
+
+        const response = await transporter.sendMail({
+            from: "bidsphere.auction@gmail.com",
+            to: email,
+            subject: "COD Payment Confirmed – Your Order is Out for Delivery",
+            html: htmlContent,
+        });
+
+        console.log("COD selected email sent successfully:", response);
+    } catch (error) {
+        console.log("COD selected email error:", error);
+    }
+};
+
+const SendUPISelectedEmail = async (email, name, auctionName, upiLink, amount) => {
+    try {
+        const qrBuffer = await QRCode.toBuffer(upiLink);
+
+        const htmlContent = UPI_Selected_Email_Template
+            .replace("{name}", name)
+            .replace("{auctionName}", auctionName)
+            .replace("{upiLink}", upiLink)
+            .replace("{amount}", amount)
+            .replace("{qrCode}", `<img src="cid:qrimage@bidsphere" />`);
+
+        const response = await transporter.sendMail({
+            from: "bidsphere.auction@gmail.com",
+            to: email,
+            subject: "UPI Payment Details for Your Auction Order",
+            html: htmlContent,
+            attachments: [
+                {
+                    filename: "qr.png",
+                    content: qrBuffer,
+                    cid: "qrimage@bidsphere"
+                }
+            ]
+        });
+
+        console.log("UPI selected email sent successfully:", response);
+    } catch (error) {
+        console.log("UPI selected email error:", error);
+    }
+};
+
+const SendPaymentVerifiedEmail = async (email, name, auctionName) => {
+    try {
+        const htmlContent = Payment_Verified_Email_Template
+            .replace("{name}", name)
+            .replace("{auctionName}", auctionName)
+
+        const response = await transporter.sendMail({
+            from: "bidsphere.auction@gmail.com",
+            to: email,
+            subject: "Payment Verified – Your Order is Confirmed",
+            html: htmlContent,
+        });
+
+        console.log("Payment verified email sent successfully:", response);
+    } catch (error) {
+        console.log("Payment verified email error:", error);
+    }
+};
+
+const SendPaymentRejection = async (email, reason) => {
+    try {
+        const htmlContent = Payment_Rejection_Template
+            .replace("{reason}", reason)
+
+        const response = await transporter.sendMail({
+            from: "bidsphere.auction@gmail.com",
+            to: email,
+            subject: "Payment Failed – Action Required",
+            html: htmlContent,
+        });
+
+        console.log("Payment rejection email sent successfully", response);
+    } catch (error) {
+        console.log("Error sending payment rejection email:", error);
+    }
+};
+
+const SendPaymentVerificationRequestSent = async (email, name, auctionName, reqFor) => {
+  try {
+    const htmlContent = PAYMENT_Verification_Request_Sent_Template
+      .replace("{name}", name)
+      .replace("{auctionName}", auctionName)
+      .replace("{reqFor}", reqFor)
+      
+    const response = await transporter.sendMail({
+      from: "bidsphere.auction@gmail.com",
+      to: email,
+      subject: "Payment Verification Request Received",
+      html: htmlContent,
+    });
+
+    console.log("Payment verification-request email sent successfully", response);
+  } catch (error) {
+    console.log("Error sending payment verification-request email:", error);
+  }
+};
+
+export { 
+    SendVerificationCode, 
+    WelcomeEmail, 
+    SendOutBidEmail, 
+    SendResetPwdEmail, 
+    SendAuctionWinnerEmail, 
+    SendCODSelectedEmail, 
+    SendUPISelectedEmail, 
+    SendPaymentVerifiedEmail,
+    SendPaymentRejection,
+    SendPaymentVerificationRequestSent
+ };
