@@ -3,8 +3,7 @@ import Payment from '../models/Payment.js';
 import User from '../models/User.js';
 import AdminNotification from '../models/AdminNotification.js';
 import { generateUpiLink } from '../services/payment.service.js';
-import {  SendCODSelectedEmail, SendUPISelectedEmail, SendPaymentVerifiedEmail, SendPaymentVerificationRequestSent} from '../services/email.sender.js';
-
+import {  SendCODSelectedEmail, SendUPISelectedEmail, SendPaymentVerificationRequestSent} from '../services/email.sender.js';
 
 export const handleRegistrationPayment = async (req, res) => {
   try {
