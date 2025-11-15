@@ -179,8 +179,8 @@ async function getAuctionById(req, res) {
     }
 
     const auction=await Auction.findById(auctionId)
-      .populate("createdBy", "username email")
-      .populate("currentWinner", "username email")
+      .populate("createdBy", "name email")
+      .populate("currentWinner", "name email")
       .lean();
 
     if (!auction) {
@@ -208,7 +208,7 @@ async function getAuctionById(req, res) {
       .sort({amount: -1 })
       .limit(10)// top 10 bids fetched rn
       .select("bidderId amount timestamp")
-      .populate("bidderId", "username email")
+      .populate("bidderId", "name email")
       .lean();
 
     return res.status(200).json({
@@ -226,24 +226,11 @@ async function getAuctionById(req, res) {
 //GET /bidsphere/auctions
 async function listAuctions(req, res) {
   try {
-    const { status, category, search, page = 1, limit = 20, sort = "-createdAt" } = req.query;
+    const { status, category, page = 1, limit = 20, sort = "-createdAt" } = req.query;
 
     const filter = { verified: true }; // Only show verified auctions to public
     if (status) filter.status = status.toUpperCase();
     if (category) filter["item.category"] = category;
-
-    // If search is provided, perform a case-insensitive regex search across several fields
-    if (search && String(search).trim()) {
-      // escape regex special chars
-      const esc = String(search).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const re = new RegExp(esc, "i");
-      filter.$or = [
-        { title: re },
-        { "item.name": re },
-        { "item.description": re },
-        { "item.category": re },
-      ];
-    }
 
     const skip = (Number(page) - 1) * Number(limit);
 
@@ -252,7 +239,7 @@ async function listAuctions(req, res) {
       .skip(skip)
       .limit(Number(limit))
       .select("title item.name item.images startTime endTime currentBid status startingPrice totalBids")
-      .populate("createdBy", "username")
+      .populate("createdBy", "name")
       .lean();
 
     const total = await Auction.countDocuments(filter);

@@ -8,7 +8,6 @@ function Navbar() {
   const [admin, setAdmin] = useState(null);
   const navigate = useNavigate();
   const location = useLocation(); 
-  const [searchTerm, setSearchTerm] = useState("");
 
   //Load from local storage if data is already available
   const loadAuthFromStorage = () => {
@@ -99,36 +98,15 @@ function Navbar() {
         <Link to="/">BID SPHERE</Link>
       </div>
 
-      <div className="flex items-center">
-        <input
-          type="text"
-          aria-label="Search auctions"
-          placeholder="What are you looking for?"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              const q = searchTerm.trim();
-              if (q) navigate(`/auctions?search=${encodeURIComponent(q)}`);
-              else navigate('/auctions');
-            }
-          }}
-          className="px-3 py-2 rounded-md w-72"
-        />
-        <button
-          onClick={() => {
-            const q = searchTerm.trim();
-            if (q) navigate(`/auctions?search=${encodeURIComponent(q)}`);
-            else navigate('/auctions');
-          }}
-          className="ml-2 bg-white text-gray-800 px-3 py-2 rounded-md"
-          aria-label="Search">
-          Search
-        </button>
-      </div>
+      <input
+        type="text"
+        placeholder="What are you looking for?"
+        className="px-3 py-2 rounded-md w-72"
+      />
 
       <ul className="flex space-x-6 font-medium">
         <li><Link to="/categories">Categories</Link></li>
+        <li><Link to="/contact">Contact</Link></li>
         <li><Link to='/create-auction'>Create Auction</Link></li>
 
         {!user && !admin && (
