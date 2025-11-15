@@ -3,6 +3,7 @@ import AutoBid from "../models/AutoBid.js";
 import Bid from "../models/Bids.js"
 import { handleAutoBids } from "../services/autoBid.service.js";
 import { logAuctionEvent } from "../services/logger.service.js";
+import User from "../models/User.js";
 
 export const placeBid = async (req, res) => {
   try {

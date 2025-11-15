@@ -102,6 +102,7 @@ export const updateAuction = (id, body) => {
 };
 export const deleteAuction = (id) => del(`${BASE_AUCTION}/${id}`);
 export const createAuction = (payload) => postJSON(`${BASE_AUCTION}/create`, payload);
+export const placeBid = (auctionId, amount) => postJSON(`/BidSphere/${auctionId}/bid/place`, { amount });
 export const getMyAuctions = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_AUCTION}/mine${qs ? `?${qs}` : ""}`);
@@ -109,6 +110,22 @@ export const getMyAuctions = (params = {}) => {
 export const listAuctions = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_AUCTION}${qs ? `?${qs}` : ""}`);
+};
+// derive categories from auctions when backend has no dedicated endpoint
+export const getCategories = async (opts = {}) => {
+  // opts.limit can be supplied; default to 200
+  const limit = typeof opts.limit === "number" ? opts.limit : 200;
+  const res = await listAuctions({ limit });
+  const auctions = res?.auctions || [];
+  const map = new Map();
+  for (const a of auctions) {
+    const name = (a?.item?.category || "Uncategorized").trim();
+    if (!map.has(name)) {
+      const img = a?.item?.images?.[0] || null;
+      map.set(name, { name, image: img });
+    }
+  }
+  return Array.from(map.values());
 };
 export const getCurrentUser = () => getJSON(`${BASE_USER}/me`);
 export const uploadImagesBase64 = (imagesPayload) => postJSON(`${BASE_AUCTION}/upload-base64`, imagesPayload);
@@ -128,6 +145,7 @@ export async function uploadImagesFormData(formData) {
 export const createUpiOrder = (payload) => postJSON(`${BASE_UPI}/create-order`, payload);
 export const createCodOrder = (payload) => postJSON(`${BASE_UPI}/create-cod`, payload);
 export const getPaymentStatus = (paymentId) => getJSON(`${BASE_UPI}/status/${paymentId}`);
+export const getPayee = () => getJSON(`${BASE_UPI}/payee`);
 export const verifyPayment = (payload) => postJSON(`${BASE_PAYMENTS}/verify-payment`, payload);
 export const listPayments = (queryParams = {}) => {
   const params = new URLSearchParams(queryParams).toString();

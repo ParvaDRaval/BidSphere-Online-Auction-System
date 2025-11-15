@@ -8,5 +8,6 @@ router.post("/create-order", paymentController.createOrder);
 router.post("/create-cod", paymentController.createCodOrder);
 
 router.get("/status/:paymentId", paymentController.getPaymentStatus);
+router.get("/payee", paymentController.getPayee);
 export default router;
 
