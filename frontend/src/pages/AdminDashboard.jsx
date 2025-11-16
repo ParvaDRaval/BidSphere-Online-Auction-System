@@ -36,7 +36,7 @@ function AdminDashboard() {
   }, [statusFilter]);
 
   const handleVerify = async (auctionId) => {
-    if (!window.confirm("Are you sure you want to verify this auction? The status will change to LIVE.")) return;
+    if (!window.confirm("Are you sure you want to verify this auction? The status will change to UPCOMING/LIVE.")) return;
     
     setVerifyingId(auctionId);
     try {
@@ -50,7 +50,7 @@ function AdminDashboard() {
         setSelectedAuction(res.auction);
       }
 
-      alert(res.message || "Auction verified successfully. Status changed to LIVE.");
+      alert(res.message || "Auction verified successfully. Status changed to UPCOMING/LIVE.");
     } catch (err) {
       alert(err.message || "Failed to verify auction");
     } finally {
