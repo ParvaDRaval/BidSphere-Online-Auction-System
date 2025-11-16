@@ -20,7 +20,7 @@ export const handleRegistrationPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" });
     }
   
-    if (auction.status === "LIVE" || auction.status === "UPCOMING" && isRegistrationOpen) {
+    if (auction.status === "LIVE" || (auction.status === "UPCOMING" && isRegistrationOpen)) {
       
       const registrationFees = 0.01 * auction.startingPrice; // 1% of startingPrice
 
@@ -49,7 +49,8 @@ export const handleRegistrationPayment = async (req, res) => {
         status: "PENDING"
       })
 
-      const verifyLink = `http://localhost:5000/bidsphere/auctions/${auctionId}/${payment._id}/verify`
+      const backendUrl = (process.env.BACKEND_URL || "http://localhost:5000").replace(/\/+$/, "");
+      const verifyLink = `${backendUrl}/bidsphere/auctions/${auctionId}/${payment._id}/verify`;
 
       return res.status(200).json({payment, verifyLink: verifyLink });
     }

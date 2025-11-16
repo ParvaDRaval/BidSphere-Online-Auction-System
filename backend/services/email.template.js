@@ -1,3 +1,6 @@
+const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, "");
+const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:5000').replace(/\/+$/, "");
+
 export const Verification_Email_Template = `
   <!DOCTYPE html>
   <html lang="en">
@@ -161,7 +164,7 @@ export const Welcome_Email_Template = `
                 <li>Place bids and track your auctions.</li>
                 <li>Contact our support team if you need any help.</li>
             </ul>
-            <a href="http://localhost:3000/bidsphere" class="button" target="_blank" rel="noopener noreferrer">Start Bidding Now</a>
+            <a href="${FRONTEND_URL}/bidsphere" class="button" target="_blank" rel="noopener noreferrer">Start Bidding Now</a>
             <p>If you have any questions or need assistance, our team is here to help you every step of the way. Happy bidding!</p>
         </div>
         <div class="footer">
@@ -264,7 +267,7 @@ export const Outbid_Email_Template = `
             <p>Your maximum auto-bid limit: <strong>${'{maxLimit}'}</strong>.</p>
 
             <p>If you’d like to increase your auto-bid limit or place a new bid, click below:</p>
-            <a href="http://localhost:5000/bidsphere/${'{auctionId}'}/bid/editauto/${'{autobidId}'}" 
+            <a href="${BACKEND_URL}/bidsphere/${'{auctionId}'}/bid/editauto/${'{autobidId}'}"
                class="button" target="_blank" rel="noopener noreferrer">
                 Edit Auto-Bid
             </a>
@@ -421,8 +424,8 @@ export const Auction_Winner_Email_Template = `
 
             <p>Please choose a payment method within <strong>24 hours</strong>:</p>
 
-            <a href="{http://localhost:5000/bidsphere/auctions/${'{auctionId}'}/finalpay/upi}" class="button">UPI Payment</a>
-            <a href="{http://localhost:5000/bidsphere/auctions/${'{auctionId}'}/finalpay/cod}" class="button cod">Cash on Delivery (COD)</a>
+            <a href="${BACKEND_URL}/bidsphere/auctions/${'{auctionId}'}/finalpay/upi" class="button">UPI Payment</a>
+            <a href="${BACKEND_URL}/5000/bidsphere/auctions/${'{auctionId}'}/finalpay/cod" class="button cod">Cash on Delivery (COD)</a>
 
             <p>If no payment option is selected in time, the order will be cancelled.</p>
         </div>
@@ -614,7 +617,7 @@ export const Payment_Rejection_Template = `
       <p>
         Please try again using a different payment method or ensure your bank/card allows online transactions.
       </p>
-      <a href="http://localhost:5000/bidsphere/auctions/${'{auctionId}'}/finalpay" 
+      <a href="${BACKEND_URL}/bidsphere/auctions/${'{auctionId}'}/finalpay" 
          style="display: inline-block; margin-top: 15px; padding: 10px 20px; background: #1d3557; color: white; text-decoration: none; border-radius: 5px;">
          Retry Payment
       </a>

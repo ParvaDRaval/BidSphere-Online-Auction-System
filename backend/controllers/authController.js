@@ -68,8 +68,14 @@ async function handleLogin (req, res) {
     }
 
     const token = setUser(user);
-    res.cookie("token", token);
-    
+    res.cookie("token", token, {
+    httpOnly: true,
+    sameSite: "none",
+    secure: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/",
+  });
+  
     return res.json({ message: "Login successful", token, user: { username: user.username, email: user.email } });
   }
    catch (err) {
@@ -81,7 +87,7 @@ async function handleLogin (req, res) {
 async function handleLogout (req, res) {
   try {
     //Clear the token cookie
-    res.clearCookie("token");
+    res.clearCookie("token", { httpOnly: true, sameSite: "none", secure: true, path: "/" });
 
    return res.json({ message: "Logged out" });
   }
@@ -155,10 +161,11 @@ async function handleResetPwdEmail (req, res) {
     user.resetTokenExpiry = resetTokenExpiry;
     await user.save();
 
-    // const resetPwdLink = `${process.env.FRONTEND_URL}/bidsphere/user/resetpwd?token=${resetToken}`;
-                      // FRONTEND_URL = https://bidsphere.vercel.app
-
-    const resetPwdLink = `http://localhost:5000/bidsphere/user/resetpwd?token=${resetToken}`;
+     // Build frontend URL robustly:
+    const rawFrontend = process.env.FRONTEND_URL || (`${req.protocol}://${req.get("host")}`);
+    // remove trailing slash if present
+    const frontendUrl = rawFrontend.replace(/\/+$/, "");
+    const resetPwdLink = `${frontendUrl}/bidsphere/user/resetpwd?token=${resetToken}`;
 
     SendResetPwdEmail(email, resetPwdLink);
 

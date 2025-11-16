@@ -1,4 +1,6 @@
 import Auction from "../models/Auction.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 export async function generateUpiLink(auctionId, registrationFees) {
   const auction = await Auction.findById(auctionId);
@@ -6,7 +8,7 @@ export async function generateUpiLink(auctionId, registrationFees) {
     throw new Error("Auction not found");
   }
 
-  const upiId = "mahekvaghera@oksbi";
+  const upiId = process.env.PAYMENT_UPI_ID;
 
   const params = new URLSearchParams({
     pa: upiId,

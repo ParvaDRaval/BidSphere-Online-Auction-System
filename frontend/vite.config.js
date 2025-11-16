@@ -15,7 +15,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       "/bidsphere": {
-        target: "http://localhost:5000",
+        target: "https://bidsphere-backend-6mxy.onrender.com",
         changeOrigin: true,
         secure: false,
       },
