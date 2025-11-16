@@ -1,9 +1,12 @@
-const BASE_USER = "/bidsphere/user";
-const BASE_ADMIN = "/bidsphere/admin";
-const BASE_AUCTION = "/bidsphere/auctions";
+// Get API base URL from environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-const BASE_UPI = "/bidsphere/upi";
-const BASE_PAYMENTS = "/bidsphere/admin/payments";
+const BASE_USER = `${API_BASE_URL}/bidsphere/user`;
+const BASE_ADMIN = `${API_BASE_URL}/bidsphere/admin`;
+const BASE_AUCTION = `${API_BASE_URL}/bidsphere/auctions`;
+
+const BASE_UPI = `${API_BASE_URL}/bidsphere/upi`;
+const BASE_PAYMENTS = `${API_BASE_URL}/bidsphere/admin/payments`;
 
 async function postJSON(path, body) {
   const res = await fetch(path, {
@@ -110,6 +113,22 @@ export const getMyAuctions = (params = {}) => {
 export const listAuctions = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_AUCTION}${qs ? `?${qs}` : ""}`);
+};
+// derive categories from auctions when backend has no dedicated endpoint
+export const getCategories = async (opts = {}) => {
+  // opts.limit can be supplied; default to 200
+  const limit = typeof opts.limit === "number" ? opts.limit : 200;
+  const res = await listAuctions({ limit });
+  const auctions = res?.auctions || [];
+  const map = new Map();
+  for (const a of auctions) {
+    const name = (a?.item?.category || "Uncategorized").trim();
+    if (!map.has(name)) {
+      const img = a?.item?.images?.[0] || null;
+      map.set(name, { name, image: img });
+    }
+  }
+  return Array.from(map.values());
 };
 export const getCurrentUser = () => getJSON(`${BASE_USER}/me`);
 export const uploadImagesBase64 = (imagesPayload) => postJSON(`${BASE_AUCTION}/upload-base64`, imagesPayload);

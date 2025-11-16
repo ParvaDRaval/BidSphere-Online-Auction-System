@@ -114,9 +114,9 @@ function Login() {
           </button>
         </form>
 
-        <p className="text-sm text-red-600 mb-2 cursor-pointer">
-          Forgot Password?
-        </p>
+        <div className="flex items-center justify-start mb-2">
+          <p className="text-sm text-red-600 cursor-pointer">Forgot Password?</p>
+        </div>
         <p>
           Don’t have an account?{" "}
           <Link to="/register" className="text-blue-600">
