@@ -1,5 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import dotenv from "dotenv";
 dotenv.config();
 import path from "path";
@@ -7,6 +8,17 @@ import path from "path";
 // express app
 const app = express();
 app.set("trust proxy", true);
+
+// CORS configuration for production
+const corsOptions = {
+  origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  exposedHeaders: ['Set-Cookie']
+};
+
+app.use(cors(corsOptions));
 
 //connect to db
 import connectDB from "./services/db.js";
@@ -42,7 +54,7 @@ import { restrictToLoggedinUserOnly, checkAuth } from "./middleware/authMiddlewa
 import { restrictAdminIP } from "./middleware/adminMiddleware.js";
 
 // home page
-app.get("/", restrictToLoggedinUserOnly, (req, res) => res.send("BidSphere Online Auction System") );
+app.get ("/", restrictToLoggedinUserOnly, (req, res) => res.send("BidSphere Online Auction System") );
 
 // User Route
 import authRoutes from "./routes/authRoutes.js";
@@ -50,7 +62,10 @@ app.use("/bidsphere/user", authRoutes);
 
 // Admin Route
 import adminRoutes from "./routes/adminRoutes.js";
-app.use("/bidsphere/admin", restrictAdminIP , adminRoutes)
+app.use("/bidsphere/admin", (req, res, next) => {
+  if (!process.env.ADMIN_IP) return next();
+  return restrictAdminIP(req, res, next);
+}, adminRoutes)
 
 // Auction Route
 import auctionRoutes from "./routes/auctionRoutes.js";
