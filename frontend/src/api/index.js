@@ -159,3 +159,6 @@ export const listPayments = (queryParams = {}) => {
   const params = new URLSearchParams(queryParams).toString();
   return getJSON(`${BASE_PAYMENTS}/payments${params ? `?${params}` : ''}`);
 };
+
+export const requestPasswordReset = (payload) => postJSON(`${BASE_USER}/forgetpwd`, payload);
+export const resetPassword = (payload) => postJSON(`${BASE_USER}/resetpwd`, payload);

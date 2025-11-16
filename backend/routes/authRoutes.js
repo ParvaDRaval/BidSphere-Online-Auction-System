@@ -17,7 +17,6 @@ router.post("/logout", handleLogout);
 // GET /bidsphere/user/me - returns current user based on session cookie (token)
 router.get("/me", checkAuth, getCurrentUser);
 router.post("/forgetpwd", handleResetPwdEmail);
-
 router.post("/resetpwd", handleResetPwd);
 
 // new watchlist + history routes

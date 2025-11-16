@@ -18,6 +18,8 @@ import MyListings from "./pages/MyListings";
 import PayFees from "./pages/PayFees";
 import UserDashboardBuyer from "./pages/UserDashboardBuyer";
 import Contact from "./pages/contact";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   return (
@@ -42,6 +44,8 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/edit-auction-draft/:id" element={<EditAuctionDraft />} />
         <Route path="/buyer/dashboard" element={<UserDashboardBuyer />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
       <Footer />
     </div>
