@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getCurrentUser } from "../api";
+import { getCurrentUser, getWatchlist, getBiddingHistory } from "../api";
 /* eslint-disable react/prop-types */
 
 function StatCard({ title, value, small }) {
@@ -12,7 +12,7 @@ function StatCard({ title, value, small }) {
   );
 }
 
-function WatchlistRow({ title = "Auction Name", bid = "₹250", bids = 12, timeLeft = "2h 15m" }) {
+function WatchlistRow({ title = "Auction Name", bid = "₹250", bids = 0, timeLeft = "—" }) {
   return (
     <div className="flex items-center gap-4 bg-white border rounded p-3">
       <div className="w-16 h-12 bg-gray-100 rounded" />
@@ -32,7 +32,6 @@ export default function UserDashboardBuyer() {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
 
-  // added states
   const [watchlist, setWatchlist] = useState([]);
   const [biddingHistory, setBiddingHistory] = useState([]);
   const [loadingLists, setLoadingLists] = useState(true);
@@ -42,7 +41,7 @@ export default function UserDashboardBuyer() {
     async function load() {
       setLoadingUser(true);
       try {
-        const res = await getCurrentUser().catch(() => null); // [`getCurrentUser`](frontend/src/api/index.js)
+        const res = await getCurrentUser().catch(() => null);
         if (!mounted) return;
         const u = res?.user || res || null;
         setUser(u);
@@ -52,30 +51,14 @@ export default function UserDashboardBuyer() {
         if (mounted) setLoadingUser(false);
       }
 
-      // fetch watchlist + bidding history if backend endpoints exist
       try {
         setLoadingLists(true);
-        // fetch watchlist
-        try {
-          const r = await fetch("/bidsphere/user/watchlist", { credentials: "same-origin" });
-          if (r.ok) {
-            const json = await r.json();
-            if (mounted) setWatchlist(json?.watchlist || json?.auctions || []);
-          }
-        } catch (e) {
-          // endpoint missing or failed — leave empty
-        }
-
-        // fetch bidding history
-        try {
-          const r2 = await fetch("/bidsphere/user/bidding-history", { credentials: "same-origin" });
-          if (r2.ok) {
-            const j2 = await r2.json();
-            if (mounted) setBiddingHistory(j2?.history || j2?.bids || []);
-          }
-        } catch (e) {
-          // endpoint missing or failed — leave empty
-        }
+        const [wlRes, bhRes] = await Promise.allSettled([getWatchlist(), getBiddingHistory()]);
+        if (!mounted) return;
+        if (wlRes.status === "fulfilled") setWatchlist(wlRes.value?.watchlist || []);
+        if (bhRes.status === "fulfilled") setBiddingHistory(bhRes.value?.history || []);
+      } catch (err) {
+        console.error("list fetch error:", err);
       } finally {
         if (mounted) setLoadingLists(false);
       }
@@ -84,15 +67,9 @@ export default function UserDashboardBuyer() {
     return () => (mounted = false);
   }, []);
 
-  const displayName = (user && (user.name || user.username || user.email)) || "First Last";
-  const initials = String(displayName)
-    .split(" ")
-    .map((s) => s[0] || "")
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  const displayName = (user && (user.username || user.name || user.email)) || "First Last";
+  const initials = String(displayName).split(" ").map((s) => s[0] || "").slice(0, 2).join("").toUpperCase();
 
-  // placeholder stats - keep as-is
   const activeBids = 0;
   const totalSpending = 0;
   const watchlistCount = watchlist.length;
@@ -101,7 +78,6 @@ export default function UserDashboardBuyer() {
   return (
     <div className="min-h-screen bg-[#fdfbf6]">
       <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Sidebar (same layout as seller but different color accents) */}
         <aside className="lg:col-span-3 bg-white border rounded-lg p-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-green-600 text-white flex items-center justify-center font-semibold">{initials || "U"}</div>
@@ -122,9 +98,7 @@ export default function UserDashboardBuyer() {
           </nav>
         </aside>
 
-        {/* Main */}
         <main className="lg:col-span-9 space-y-6">
-          {/* Top stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard title="Active Bids" value={<><span className="text-2xl">{activeBids}</span><div className="text-xs text-gray-500">Across auctions</div></>} />
             <StatCard title="Total Spending" value={<><span className="text-2xl">₹{totalSpending}</span><div className="text-xs text-gray-500">This month</div></>} small />
@@ -132,7 +106,6 @@ export default function UserDashboardBuyer() {
             <StatCard title="Won Auctions" value={<><span className="text-2xl">{wonAuctions}</span><div className="text-xs text-gray-500">This month</div></>} small />
           </div>
 
-          {/* Watchlist */}
           <div className="bg-white border rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">My Watchlist</h2>
@@ -158,7 +131,6 @@ export default function UserDashboardBuyer() {
             </div>
           </div>
 
-          {/* Bidding History */}
           <div className="bg-white border rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4">Bidding History</h2>
             <div className="space-y-3">
@@ -171,25 +143,23 @@ export default function UserDashboardBuyer() {
                   <div key={b._id || b.id || idx} className="bg-gray-50 p-3 rounded border flex items-center gap-4">
                     <div className="w-16 h-12 bg-gray-100 rounded" />
                     <div className="flex-1">
-                      <div className="font-medium">{b.title || b.auctionTitle || b.item?.name || "Auction"}</div>
+                      <div className="font-medium">{b.auctionId?.title || b.title || b.auctionTitle || b.item?.name || "Auction"}</div>
                       <div className="text-xs text-gray-500">
-                        Your bid: <span className={b.youWon ? "text-green-600" : "text-gray-700"}>{b.yourBid ? `₹${b.yourBid}` : (b.amount ? `₹${b.amount}` : "-")}</span>
+                        Your bid: <span className={b.youWon ? "text-green-600" : "text-gray-700"}>{b.amount ? `₹${b.amount}` : (b.yourBid ? `₹${b.yourBid}` : "-")}</span>
                         {b.current && <> • Current: ₹{b.current}</>}
                         {b.final && <> • Final: ₹{b.final}</>}
                       </div>
                     </div>
-                    <div className="text-sm text-gray-500">{b.when || b.time || (b.endedAt ? new Date(b.endedAt).toLocaleString() : "")}</div>
+                    <div className="text-sm text-gray-500">{b.createdAt ? new Date(b.createdAt).toLocaleString() : (b.when || b.time || (b.endedAt ? new Date(b.endedAt).toLocaleString() : ""))}</div>
                   </div>
                 ))
               )}
             </div>
-
             <div className="mt-4 text-center">
               <Link to="/bidding-history" className="text-blue-600">View All History</Link>
             </div>
           </div>
 
-          {/* Trending Auctions (placeholders) */}
           <div className="bg-white border rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4">Trending Auctions</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
