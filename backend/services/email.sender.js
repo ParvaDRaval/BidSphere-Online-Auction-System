@@ -10,16 +10,18 @@ import { Payment_Verified_Email_Template } from "../email-templates/paymentVerif
 import { Payment_Rejection_Template } from "../email-templates/paymentRejection_email.template.js"
 import { PAYMENT_Verification_Request_Sent_Template } from "../email-templates/paymentVerifyRequest_email.template.js"
 import QRCode from "qrcode";
+import dotenv from "dotenv";
+dotenv.config();
 const SendVerificationCode = async (email, verificationCode) => {
     try {
         const response = await transporter.sendMail({
-            from: "bidsphere.auction@gmail.com",
+            from: process.env.BREVO_FROM_EMAIL,
             to: email,
             subject: "Verify your Email, Welcome to BidSphere",
             html: Verification_Email_Template.replace("{verificationCode}", verificationCode),
         });
 
-        console.log("Email send successfully", response);
+        console.log("Verification Email send successfully", response);
     } catch (error) {
         console.log("catch error", error);
     }
@@ -28,13 +30,13 @@ const SendVerificationCode = async (email, verificationCode) => {
 const WelcomeEmail = async (email, name) => {
     try {
         const response = await transporter.sendMail({
-            from: "bidsphere.auction@gmail.com",
+            from: process.env.BREVO_FROM_EMAIL,
             to: email,
             subject: "Welcome to BidSphere",
             html:  Welcome_Email_Template.replace("{name}", name)
         });
 
-        console.log("Email send successfully", response);
+        console.log("Welcome Email send successfully", response);
     } catch (error) {
         console.log("catch error", error);
     }
@@ -50,7 +52,7 @@ const SendOutBidEmail= async (email, itemName, currentBid, maxLimit, auctionId, 
             .replaceAll("{auctionId}", auctionId);
 
         const response = await transporter.sendMail({
-          from: "bidsphere.auction@gmail.com",
+          from: process.env.BREVO_FROM_EMAIL,
           to: email,
           subject: `You've Been Outbid on ${itemName} in ${title} - BidSphere`,
           html: htmlContent,
@@ -65,7 +67,7 @@ const SendOutBidEmail= async (email, itemName, currentBid, maxLimit, auctionId, 
 const SendResetPwdEmail = async (email, resetPwdLink) => {
   try {
     const response = await transporter.sendMail({
-      from: `"BidSphere Support" <bidsphere.auction@gmail.com>`,
+      from: process.env.BREVO_FROM_EMAIL,
       to: email,
       subject: "Reset your BidSphere Password",
       html: Reset_Password_Email_Template.replace("{resetLink}", resetPwdLink)
@@ -84,7 +86,7 @@ const SendAuctionWinnerEmail = async (email, name, auctionName) => {
             .replace("{auctionName}", auctionName)
 
         const response = await transporter.sendMail({
-            from: "bidsphere.auction@gmail.com",
+            from: process.env.BREVO_FROM_EMAIL,
             to: email,
             subject: "You Won the Auction! Choose Your Payment Method",
             html: htmlContent,
@@ -103,7 +105,7 @@ const SendCODSelectedEmail = async (email, name, auctionName) => {
             .replace("{auctionName}", auctionName);
 
         const response = await transporter.sendMail({
-            from: "bidsphere.auction@gmail.com",
+            from: process.env.BREVO_FROM_EMAIL,
             to: email,
             subject: "COD Payment Confirmed – Your Order is Out for Delivery",
             html: htmlContent,
@@ -127,7 +129,7 @@ const SendUPISelectedEmail = async (email, name, auctionName, upiLink, amount) =
             .replace("{qrCode}", `<img src="cid:qrimage@bidsphere" />`);
 
         const response = await transporter.sendMail({
-            from: "bidsphere.auction@gmail.com",
+            from: process.env.BREVO_FROM_EMAIL,
             to: email,
             subject: "UPI Payment Details for Your Auction Order",
             html: htmlContent,
@@ -153,7 +155,7 @@ const SendPaymentVerifiedEmail = async (email, name, auctionName) => {
             .replace("{auctionName}", auctionName)
 
         const response = await transporter.sendMail({
-            from: "bidsphere.auction@gmail.com",
+            from: process.env.BREVO_FROM_EMAIL,
             to: email,
             subject: "Payment Verified – Your Order is Confirmed",
             html: htmlContent,
@@ -171,7 +173,7 @@ const SendPaymentRejection = async (email, reason) => {
             .replace("{reason}", reason)
 
         const response = await transporter.sendMail({
-            from: "bidsphere.auction@gmail.com",
+            from: process.env.BREVO_FROM_EMAIL,
             to: email,
             subject: "Payment Failed – Action Required",
             html: htmlContent,
@@ -191,7 +193,7 @@ const SendPaymentVerificationRequestSent = async (email, name, auctionName, reqF
       .replace("{reqFor}", reqFor)
       
     const response = await transporter.sendMail({
-      from: "bidsphere.auction@gmail.com",
+      from: process.env.BREVO_FROM_EMAIL,
       to: email,
       subject: "Payment Verification Request Received",
       html: htmlContent,
