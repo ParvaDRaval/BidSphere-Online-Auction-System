@@ -151,25 +151,24 @@ async function handleResetPwdEmail (req, res) {
     }
 
     if (!user.isVerified) {
-      return res.status(404).json({ message: "User is not verifid yet, first verify your email" });
+      return res.status(400).json({ message: "User is not verified yet, first verify your email" });
     }
 
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetTokenExpiry = Date.now() + 15 * 60 * 1000;
+    const resetTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 minutes
 
     user.resetToken = resetToken;
     user.resetTokenExpiry = resetTokenExpiry;
     await user.save();
 
-     // Build frontend URL robustly:
     const rawFrontend = process.env.FRONTEND_URL || (`${req.protocol}://${req.get("host")}`);
-    // remove trailing slash if present
     const frontendUrl = rawFrontend.replace(/\/+$/, "");
-    const resetPwdLink = `${frontendUrl}/bidsphere/user/resetpwd?token=${resetToken}`;
+    // token + email so frontend can prefill and backend can verify
+    const resetPwdLink = `${frontendUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
     SendResetPwdEmail(email, resetPwdLink);
 
-    return res.status(200).json({ success: true, message: "Reset Password link is shared in your Email"});
+    return res.status(200).json({ success: true, message: "Reset Password link is shared in your Email" });
   }
   catch (error) {
     console.error("Send Reset Password email error:", error);
@@ -179,15 +178,20 @@ async function handleResetPwdEmail (req, res) {
 
 async function handleResetPwd (req, res) {
   try {
-    const { email, newPassword, confirmNewPassword } = req.body;
+    const { token, email, newPassword, confirmNewPassword } = req.body;
 
-    if (!email || !newPassword || !confirmNewPassword) {
+    if (!token || !email || !newPassword || !confirmNewPassword) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    // validate token & expiry
+    if (!user.resetToken || user.resetToken !== token || !user.resetTokenExpiry || user.resetTokenExpiry < Date.now()) {
+      return res.status(400).json({ message: "Invalid or expired reset token" });
     }
 
     if (newPassword !== confirmNewPassword) {
@@ -201,6 +205,11 @@ async function handleResetPwd (req, res) {
 
     const hashedPassword = await generateHashPassword(newPassword);
     user.password = hashedPassword;
+
+    // clear token fields
+    user.resetToken = null;
+    user.resetTokenExpiry = null;
+
     await user.save();
 
     return res.status(200).json({ message: "Password reset successful" });
@@ -211,4 +220,4 @@ async function handleResetPwd (req, res) {
   }
 };
 
-export { handleRegister , handleLogin, handleLogout, verifyEmail,getCurrentUser, handleResetPwdEmail, handleResetPwd };
+export { handleRegister , handleLogin, handleLogout, verifyEmail, getCurrentUser, handleResetPwdEmail, handleResetPwd };

@@ -115,7 +115,9 @@ function Login() {
         </form>
 
         <div className="flex items-center justify-start mb-2">
-          <p className="text-sm text-red-600 cursor-pointer">Forgot Password?</p>
+          <p className="text-sm text-red-600 cursor-pointer">
+            <Link to="/forgot-password">Forgot Password?</Link>
+          </p>
         </div>
         <p>
           Don’t have an account?{" "}
