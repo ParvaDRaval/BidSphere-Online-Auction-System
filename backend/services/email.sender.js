@@ -1,15 +1,14 @@
 import transporter  from "./email.transporter.js";
-import { Verification_Email_Template, 
-    Welcome_Email_Template, 
-    Outbid_Email_Template, 
-    Reset_Password_Email_Template, 
-    Auction_Winner_Email_Template, 
-    COD_Selected_Email_Template,
-    UPI_Selected_Email_Template,
-    Payment_Verified_Email_Template,
-    Payment_Rejection_Template,
-    PAYMENT_Verification_Request_Sent_Template
-   } from "./email.template.js";
+import { Verification_Email_Template } from "../email-templates/verify_email.template.js"
+import { Welcome_Email_Template } from "../email-templates/welcome_email.template.js"
+import { Outbid_Email_Template } from "../email-templates/outbid_email.template.js"
+import { Reset_Password_Email_Template } from "../email-templates/restPwd_email.template.js" 
+import { Auction_Winner_Email_Template } from "../email-templates/auctionWinner_email.template.js"
+import { COD_Selected_Email_Template } from "../email-templates/cod_email.template.js"
+import { UPI_Selected_Email_Template } from "../email-templates/upi_email.template.js"
+import { Payment_Verified_Email_Template } from "../email-templates/paymentVerification_email.template.js"
+import { Payment_Rejection_Template } from "../email-templates/paymentRejection_email.template.js"
+import { PAYMENT_Verification_Request_Sent_Template } from "../email-templates/paymentVerifyRequest_email.template.js"
 import QRCode from "qrcode";
 const SendVerificationCode = async (email, verificationCode) => {
     try {
