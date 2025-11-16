@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import Auction from "../models/Auction.js";
-import { logAuctionEvent } from "./logger.service.js";
+import { logAuctionEvent } from "../services/logger.service.js";
 
 let _cronJob = null;
 let _isRunning = false;

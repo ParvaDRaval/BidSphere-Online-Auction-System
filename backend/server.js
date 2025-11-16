@@ -22,7 +22,7 @@ app.use(cors(corsOptions));
 
 //connect to db
 import connectDB from "./services/db.js";
-import { startAuctionStatusUpdater } from "./services/auctionStatusUpdater.js";
+import { startAuctionStatusUpdater } from "./jobs/auctionStatusUpdater.js";
 
 const PORT = process.env.PORT || 5000;
 connectDB()
