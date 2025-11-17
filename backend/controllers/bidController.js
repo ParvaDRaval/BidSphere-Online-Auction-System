@@ -1,6 +1,6 @@
 import Auction from "../models/Auction.js";
 import AutoBid from "../models/AutoBid.js";
-import Bid from "../models/Bids.js"
+import Bid from "../models/Bids.js";
 import { handleAutoBids } from "../services/autoBid.service.js";
 import { logAuctionEvent } from "../services/logger.service.js";
 import User from "../models/User.js";
@@ -20,13 +20,13 @@ export const placeBid = async (req, res) => {
     if (autobid && autobid.isActive) {
       return res.status(400).json({
         success: false,
-        message: "You have already activated auto-bid for this auction"
+        message: "You have already activated auto-bid for this auction. Deactivate it first to place manual bids."
       });
     }
 
-    const bid = await Bid.findOne({ auctionId, userId });
+    let bid = await Bid.findOne({ auctionId, userId });
     if (!bid) {
-        await Bid.create({
+      bid = await Bid.create({
         auctionId: auctionId,
         userId: userId,
         amount: amount
@@ -40,7 +40,7 @@ export const placeBid = async (req, res) => {
     const now = new Date();
       // Extend auction if within last 5 minutes
       const timeDiff = auction.endTime - now;
-      if (timeDiff <= 5 * 60 * 1000) {
+      if (timeDiff > 0 && timeDiff <= 5 * 60 * 1000) {
         auction.endTime = new Date(auction.endTime.getTime() + 5 * 60 * 1000);
         await logAuctionEvent({
           auctionId,
@@ -67,7 +67,18 @@ export const placeBid = async (req, res) => {
 
     handleAutoBids(auctionId);
 
-    return res.status(200).json("Bid placed successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Bid placed successfully",
+      data: {
+        bid,
+        auction: {
+          currentBid: auction.currentBid,
+          totalBids: auction.totalBids,
+          endTime: auction.endTime
+        }
+      }
+    });
   }
   catch (err) {
     console.error("Error placing bid:", err.message);
