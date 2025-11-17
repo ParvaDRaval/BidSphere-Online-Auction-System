@@ -10,29 +10,21 @@ const app = express();
 app.set("trust proxy", true);
 
 // CORS configuration for production
+const allowedOrigin = process.env.CLIENT_ORIGIN || process.env.FRONTEND_URL || "http://localhost:3000";
+const localhostRegex = /^http:\/\/localhost:\d+$/;
+const vercelPreview = /^https:\/\/bid-sphere-online-auction-s.*\.vercel\.app$/;
 const corsOptions = {
   origin: (origin, callback) => {
-  if (!origin) return callback(null, true); // allows postman
-
-  const main = process.env.CLIENT_ORIGIN; // allows frontend domain
-  const localhost = /^http:\/\/localhost:\d+$/; // for local dev
-  const vercelPreview = /^https:\/\/bid-sphere-online-auction-s.*\.vercel\.app$/; //for different branches github before pulling to main
-
-  if (
-    origin === main ||
-    localhost.test(origin) ||
-    vercelPreview.test(origin)
-  ) {
-    callback(null, true);
-  } else {
-    callback(new Error("Not allowed by CORS: " + origin));
-  }
-},
-
-  credentials: true,
+    if (!origin) return callback(null, true); // Postman / server-to-server
+    if (origin === allowedOrigin || localhostRegex.test(origin) || vercelPreview.test(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS: " + origin));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  exposedHeaders: ['Set-Cookie']
+  exposedHeaders: ['Set-Cookie'],
+  credentials: true
 };
 
 app.use(cors(corsOptions));

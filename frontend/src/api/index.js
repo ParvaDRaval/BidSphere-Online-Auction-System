@@ -130,6 +130,8 @@ export const getWatchlist = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_USER}/watchlist${qs ? `?${qs}` : ""}`);
 };
+export const addToWatchlist = (auctionId) => postJSON(`${BASE_USER}/watchlist`, { auctionId });
+export const removeFromWatchlist = (auctionId) => del(`${BASE_USER}/watchlist/${auctionId}`);
 export const getBiddingHistory = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_USER}/bidding-history${qs ? `?${qs}` : ""}`);

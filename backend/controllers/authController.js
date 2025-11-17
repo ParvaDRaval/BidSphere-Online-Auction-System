@@ -68,35 +68,39 @@ async function handleLogin (req, res) {
     }
 
     const token = setUser(user);
-    res.cookie("token", token, {
-    httpOnly: true,
-    sameSite: "none",
-    secure: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: "/",
-  });
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    };
+    res.cookie("token", token, cookieOptions);
   
     return res.json({ message: "Login successful", token, user: { username: user.username, email: user.email } });
-  }
-   catch (err) {
-    console.error("user login error:", err);
-    return res.status(400).json({ success: false, message: err.message });
-  }
-};
-
-async function handleLogout (req, res) {
+   }
+    catch (err) {
+     console.error("user login error:", err);
+     return res.status(400).json({ success: false, message: err.message });
+   }
+ }
+ 
+ async function handleLogout (req, res) {
   try {
-    //Clear the token cookie
-    res.clearCookie("token", { httpOnly: true, sameSite: "none", secure: true, path: "/" });
-
-   return res.json({ message: "Logged out" });
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/",
+    };
+    res.clearCookie("token", cookieOptions);
+    return res.status(200).json({ message: "Logged out" });
+  } catch (err) {
+    console.error("logout error", err);
+    return res.status(500).json({ message: err.message });
   }
-  catch (err) {
-    console.error("user logout error:", err);
-    return res.status(400).json({ success: false, message: err.message });
-  }
-};
-
+ }
+ 
 async function verifyEmail (req, res) {
   try{
     const { email, code } = req.body;

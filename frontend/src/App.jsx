@@ -16,9 +16,11 @@ import BidHistory from "./pages/BidHistory";
 import Auctions from "./pages/Auctions";
 import UserDashboard from "./pages/UserDashboard";
 import MyListings from "./pages/MyListings";
+import MyBids from "./pages/MyBids";
+import Watchlist from "./pages/Watchlist";
+import UserDashboardBuyer from "./pages/UserDashboardBuyer";
 
 import RegistrationFee from "./pages/RegistrationFee";
-import UserDashboardBuyer from "./pages/UserDashboardBuyer";
 import Contact from "./pages/contact";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -41,9 +43,14 @@ function App() {
         <Route path="/auction/:id/bid-history" element={<BidHistory />} />
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/my-listings" element={<MyListings />} />
+        <Route path="/my-bids" element={<MyBids />} />
+        <Route path="/watchlist" element={<Watchlist />} />
 
         <Route path="/registration-fee" element={<RegistrationFee />} />
-        <Route path="/registration-fee/:auctionId" element={<RegistrationFee />} />
+        <Route
+          path="/registration-fee/:auctionId"
+          element={<RegistrationFee />}
+        />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/edit-auction-draft/:id" element={<EditAuctionDraft />} />
