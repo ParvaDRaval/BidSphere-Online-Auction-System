@@ -1,6 +1,16 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { getAuction, placeBid, getCurrentUser, listPayments } from "../api";
+import { useParams, useNavigate } from "react-router-dom";
+import { 
+  getAuction, 
+  placeBid, 
+  getCurrentUser, 
+  listPayments,
+  setAutoBid,
+  editAutoBid,
+  activateAutoBid,
+  deactivateAutoBid,
+  getUserAutoBid
+} from "../api";
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -8,6 +18,8 @@ function pad(n) {
 
 function AuctionDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  
   const [auction, setAuction] = useState(null);
   const [topBids, setTopBids] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -16,21 +28,31 @@ function AuctionDetails() {
   const intervalRef = useRef(null);
   const [bidAmount, setBidAmount] = useState("");
   const [placingBid, setPlacingBid] = useState(false);
-  const navigate = useNavigate();
+  
+  // Auto-bid
+  const [autoBidEnabled, setAutoBidEnabled] = useState(false);
+  const [autoBidAmount, setAutoBidAmount] = useState("");
+  const [autoBidData, setAutoBidData] = useState(null);
+  const [autoBidLoading, setAutoBidLoading] = useState(false);
+  const [showAutoBidModal, setShowAutoBidModal] = useState(false);
+  
+  // User & payment
   const [currentUser, setCurrentUser] = useState(null);
   const [hasPaid, setHasPaid] = useState(false);
   const [paymentCheckLoading, setPaymentCheckLoading] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState(null); // PENDING | CAPTURED | VOID | null
+  const [paymentStatus, setPaymentStatus] = useState(null);
 
+  // Fetch auction
   useEffect(() => {
     let mounted = true;
-    async function fetchOne() {
+    async function fetchAuction() {
       setLoading(true);
+      setError(null);
       try {
         const res = await getAuction(id);
         if (!mounted) return;
-        const a = res?.auction || res || null;
-        setAuction(a);
+        const auctionData = res?.auction || res || null;
+        setAuction(auctionData);
         setTopBids(res?.topBids || []);
       } catch (err) {
         console.error("getAuction error:", err);
@@ -39,14 +61,14 @@ function AuctionDetails() {
         if (mounted) setLoading(false);
       }
     }
-    if (id) fetchOne();
+    if (id) fetchAuction();
     return () => (mounted = false);
   }, [id]);
 
   // fetch current user and check payment status for this auction
   useEffect(() => {
     let mounted = true;
-    async function checkPayment() {
+    async function checkUserAndPayment() {
       if (!auction?._id) return;
       setPaymentCheckLoading(true);
       try {
@@ -61,7 +83,7 @@ function AuctionDetails() {
           return;
         }
 
-        // call admin payments list (backend supports filtering)
+         // call admin payments list (backend supports filtering)
         const res = await listPayments({ auctionId: auction._id, bidderId: user._id });
         // res.data is array
         const payments = res?.data || [];
@@ -72,32 +94,52 @@ function AuctionDetails() {
           setPaymentStatus("CAPTURED");
         } else {
           const pending = payments.find((p) => p.status === "PENDING");
-          if (pending) {
-            setHasPaid(false);
-            setPaymentStatus("PENDING");
-          } else {
-            setHasPaid(false);
-            setPaymentStatus(null);
-          }
+          setHasPaid(false);
+          setPaymentStatus(pending ? "PENDING" : null);
         }
       } catch (err) {
-        console.error("checkPayment error:", err);
+        console.error("checkUserAndPayment error:", err);
         setHasPaid(false);
         setPaymentStatus(null);
       } finally {
         if (mounted) setPaymentCheckLoading(false);
       }
     }
-
-    checkPayment();
+    checkUserAndPayment();
     return () => (mounted = false);
   }, [auction?._id]);
 
-  // countdown
+  // Fetch auto-bid status
+  useEffect(() => {
+    let mounted = true;
+    async function fetchAutoBid() {
+      if (!auction?._id || !currentUser?._id) return;
+      try {
+        const data = await getUserAutoBid(auction._id);
+        if (!mounted) return;
+        if (data?.autoBid) {
+          setAutoBidData(data.autoBid);
+          setAutoBidEnabled(data.autoBid.isActive);
+          setAutoBidAmount(data.autoBid.maxLimit.toString());
+        }
+      } catch (err) {
+        console.error("fetchAutoBid error:", err);
+      }
+    }
+    fetchAutoBid();
+    return () => (mounted = false);
+  }, [auction?._id, currentUser?._id]);
+
+  // Countdown timer
   useEffect(() => {
     function compute() {
-      const end = new Date(auction?.endTime || auction?.endsAt || auction?.end).getTime();
-      if (!end || isNaN(end)) {
+      const endTime = auction?.endTime || auction?.endsAt || auction?.end;
+      if (!endTime) {
+        setTimeLeft({ days: "--", hours: "--", mins: "--", secs: "--" });
+        return;
+      }
+      const end = new Date(endTime).getTime();
+      if (isNaN(end)) {
         setTimeLeft({ days: "--", hours: "--", mins: "--", secs: "--" });
         return;
       }
@@ -113,109 +155,231 @@ function AuctionDetails() {
     compute();
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(compute, 1000);
-    return () => clearInterval(intervalRef.current);
-  }, [auction?.endTime, auction]);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [auction]);
 
-  if (loading) return <div className="p-6">Loading auction...</div>;
-  if (error) return <div className="p-6 text-red-600">{error}</div>;
-  if (!auction) return <div className="p-6">Auction not found.</div>;
+  // Handle manual bid
+  const handlePlaceBid = async () => {
+    const val = Number(bidAmount);
+    if (!val || isNaN(val) || val <= 0) {
+      alert("Please enter a valid bid amount");
+      return;
+    }
+
+    const currentPrice = auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice;
+    const minInc = Number(auction?.minIncrement || 1);
+    const minRequired = Number(currentPrice) + minInc;
+    
+    if (val < minRequired) {
+      alert(`Your bid must be at least ₹${minRequired} (current: ₹${currentPrice} + min increment: ₹${minInc})`);
+      return;
+    }
+
+    try {
+      setPlacingBid(true);
+      await placeBid(auction._id, val);
+      const res = await getAuction(auction._id);
+      setAuction(res?.auction || res || auction);
+      setTopBids(res?.topBids || []);
+      setBidAmount("");
+      alert("Bid placed successfully!");
+    } catch (err) {
+      console.error("placeBid error:", err);
+      alert(err?.message || "Failed to place bid");
+    } finally {
+      setPlacingBid(false);
+    }
+  };
+
+  // Handle auto-bid setup/edit
+  const handleSetupAutoBid = async () => {
+    const val = Number(autoBidAmount);
+    if (!val || isNaN(val) || val <= 0) {
+      alert("Please enter a valid maximum bid amount");
+      return;
+    }
+
+    const currentPrice = auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice;
+    const minInc = Number(auction?.minIncrement || 1);
+    const minRequired = Number(currentPrice) + minInc;
+    
+    if (val < minRequired) {
+      alert(`Your maximum bid must be at least ₹${minRequired}`);
+      return;
+    }
+
+    try {
+      setAutoBidLoading(true);
+      if (autoBidData?._id) {
+        await editAutoBid(auction._id, autoBidData._id, val);
+        alert("Auto-bid limit updated!");
+        setAutoBidData({ ...autoBidData, maxLimit: val });
+      } else {
+        const result = await setAutoBid(auction._id, val);
+        setAutoBidData(result);
+        alert("Auto-bid created successfully!");
+      }
+      setShowAutoBidModal(false);
+    } catch (err) {
+      console.error("handleSetupAutoBid error:", err);
+      alert(err?.message || "Failed to set up auto-bid");
+    } finally {
+      setAutoBidLoading(false);
+    }
+  };
+
+  // Handle auto-bid toggle
+  const handleToggleAutoBid = async (enabled) => {
+    if (!autoBidData?._id) {
+      setShowAutoBidModal(true);
+      return;
+    }
+
+    try {
+      setAutoBidLoading(true);
+      if (enabled) {
+        await activateAutoBid(auction._id, autoBidData._id);
+        setAutoBidEnabled(true);
+        alert("Auto-bid activated!");
+      } else {
+        await deactivateAutoBid(auction._id, autoBidData._id);
+        setAutoBidEnabled(false);
+        alert("Auto-bid deactivated");
+      }
+    } catch (err) {
+      console.error("handleToggleAutoBid error:", err);
+      alert(err?.message || "Failed to toggle auto-bid");
+      setAutoBidEnabled(!enabled);
+    } finally {
+      setAutoBidLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Loading auction...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-600">{error}</div>
+      </div>
+    );
+  }
+
+  if (!auction) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div>Auction not found</div>
+      </div>
+    );
+  }
 
   const images = auction?.item?.images || [];
   const seller = auction?.createdBy;
   const displaySellerName = seller?.username || seller?.name || (seller?.email ? seller.email.split("@")[0] : "Unknown");
   const currentPrice = auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice;
+  const isSeller = currentUser?._id && seller?._id && currentUser._id.toString() === seller._id.toString();
+  const isAuctionLive = auction?.status === "LIVE";
 
   return (
     <div className="p-6 bg-[#f3f3f3] min-h-screen">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: images + details */}
+        
+        {/* LEFT COLUMN: Images + Details */}
         <div className="lg:col-span-8">
           <div className="bg-white rounded-lg shadow p-6">
+            
+            {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h1 className="text-2xl font-semibold">{auction?.title || auction?.item?.name}</h1>
-                <div className="text-sm text-gray-600">{auction?.item?.category} • {auction?.item?.condition}</div>
-                <div className="text-xs text-gray-500 mt-1">Created: {new Date(auction.createdAt).toLocaleString()}</div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-xs text-gray-500">Status</div>
-                <div>
-                  <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
-                    (() => {
-                      const s = auction?.status || "";
-                      switch (String(s).toUpperCase()) {
-                        case "YET_TO_BE_VERIFIED":
-                          return "bg-yellow-100 text-yellow-800";
-                        case "LIVE":
-                          return "bg-green-100 text-green-800";
-                        case "UPCOMING":
-                          return "bg-blue-100 text-blue-800";
-                        case "ENDED":
-                          return "bg-gray-100 text-gray-800";
-                        case "CANCELLED":
-                        case "REMOVED":
-                          return "bg-red-100 text-red-800";
-                        default:
-                          return "bg-gray-100 text-gray-800";
-                      }
-                    })()
-                  }`}> {auction?.status || "N/A"} </span>
+                <div className="text-sm text-gray-600 mt-1">
+                  {auction?.item?.category} • {auction?.item?.condition}
                 </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Created: {new Date(auction.createdAt).toLocaleString()}
+                </div>
+              </div>
+              <div>
+                <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
+                  auction?.status === "LIVE" ? "bg-green-100 text-green-800" :
+                  auction?.status === "UPCOMING" ? "bg-blue-100 text-blue-800" :
+                  auction?.status === "ENDED" ? "bg-gray-100 text-gray-800" :
+                  auction?.status === "YET_TO_BE_VERIFIED" ? "bg-yellow-100 text-yellow-800" :
+                  "bg-red-100 text-red-800"
+                }`}>
+                  {auction?.status || "N/A"}
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-              <div className="md:col-span-4">
-                <div className="w-full h-96 bg-gray-100 rounded overflow-hidden">
-                  {images.length > 0 ? (
-                    <img src={images[0]} alt={auction?.item?.name || "Auction image"} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-500">No image</div>
-                  )}
+            {/* Main Image */}
+            <div className="w-full h-96 bg-gray-100 rounded overflow-hidden mb-4">
+              {images.length > 0 ? (
+                <img 
+                  src={images[0]} 
+                  alt={auction?.item?.name || "Auction"} 
+                  className="w-full h-full object-cover" 
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  No image available
                 </div>
+              )}
+            </div>
 
-                {images.length > 1 && (
-                  <div className="mt-4 flex items-center gap-3 overflow-x-auto">
-                    {images.slice(0, 6).map((src, i) => (
-                      <img key={i} src={src} alt={`thumb-${i}`} className="w-20 h-14 object-cover rounded border" />
-                    ))}
-                    {images.length > 6 && (
-                      <div className="w-20 h-14 bg-gray-800 text-white flex items-center justify-center rounded">+{images.length - 6}</div>
-                    )}
+            {/* Thumbnail Images */}
+            {images.length > 1 && (
+              <div className="flex items-center gap-3 overflow-x-auto mb-6">
+                {images.slice(0, 6).map((src, i) => (
+                  <img 
+                    key={i} 
+                    src={src} 
+                    alt={`thumb-${i}`} 
+                    className="w-20 h-14 object-cover rounded border cursor-pointer hover:border-blue-500" 
+                  />
+                ))}
+                {images.length > 6 && (
+                  <div className="w-20 h-14 bg-gray-800 text-white flex items-center justify-center rounded text-sm">
+                    +{images.length - 6}
                   </div>
                 )}
-
-                <div className="mt-6">
-                  <div className="grid grid-cols-4 gap-4 text-center text-sm text-gray-600">
-                    <div className="bg-gray-50 p-3 rounded">
-                      <div className="font-semibold text-lg">{auction?.totalBids ?? 0}</div>
-                      <div className="text-xs">Total Bids</div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded">
-                      <div className="font-semibold text-lg">{auction?.totalParticipants ?? 0}</div>
-                      <div className="text-xs">Bidders</div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded">
-                      <div className="font-semibold text-lg">{auction?.watching ?? 0}</div>
-                      <div className="text-xs">Watching</div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded">
-                      <div className="font-semibold text-lg">₹{auction?.startingPrice ?? "-"}</div>
-                      <div className="text-xs">Starting Bid</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 bg-white p-4 rounded border">
-                  <h3 className="font-semibold mb-2">Description</h3>
-                  <p className="text-gray-700 text-sm">{auction?.description || auction?.item?.description || "No description provided."}</p>
-                </div>
-
-                {/* removed "What's Included" as requested */}
               </div>
+            )}
 
-              {/* right area within left column reserved for small panels if needed */}
-              <div className="md:col-span-2" />
+            {/* Stats Grid */}
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              <div className="bg-gray-50 p-4 rounded text-center">
+                <div className="font-semibold text-xl">{auction?.totalBids ?? 0}</div>
+                <div className="text-xs text-gray-600">Total Bids</div>
+              </div>
+              <div className="bg-gray-50 p-4 rounded text-center">
+                <div className="font-semibold text-xl">{auction?.totalParticipants ?? 0}</div>
+                <div className="text-xs text-gray-600">Bidders</div>
+              </div>
+              <div className="bg-gray-50 p-4 rounded text-center">
+                <div className="font-semibold text-xl">{auction?.watching ?? 0}</div>
+                <div className="text-xs text-gray-600">Watching</div>
+              </div>
+              <div className="bg-gray-50 p-4 rounded text-center">
+                <div className="font-semibold text-xl">₹{auction?.startingPrice ?? "-"}</div>
+                <div className="text-xs text-gray-600">Starting Bid</div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="mt-6 bg-white p-4 rounded border">
+              <h3 className="font-semibold mb-2">Description</h3>
+              <p className="text-gray-700 text-sm leading-relaxed">
+                {auction?.description || auction?.item?.description || "No description provided."}
+              </p>
             </div>
           </div>
         </div>
@@ -223,9 +387,10 @@ function AuctionDetails() {
         {/* Right sidebar: countdown, bid box, activity */}
         <aside className="lg:col-span-4">
           <div className="sticky top-6 space-y-4">
+              {/* Seller Info */}
             <div className="bg-white p-4 rounded-lg border">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{(displaySellerName||"U").slice(0,2).toUpperCase()}</div>
+                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{displaySellerName.slice(0,2).toUpperCase()}</div>
                 <div>
                   <div className="text-sm font-medium">{displaySellerName}</div>
                   <div className="text-xs text-gray-500">Verified Seller</div>
@@ -233,7 +398,8 @@ function AuctionDetails() {
               </div>
             </div>
 
-            <div className="bg-yellow-100 p-4 rounded-lg">
+            {/* Countdown Timer */}
+            <div className="bg-yellow-100 p-4 rounded-lg shadow">
               <div className="text-sm text-gray-700 font-semibold">AUCTION ENDS IN</div>
               <div className="mt-3 grid grid-cols-4 gap-2">
                 <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
@@ -253,107 +419,245 @@ function AuctionDetails() {
                   <div className="text-xs">SECS</div>
                 </div>
               </div>
-              <div className="text-xs text-gray-600 mt-2">Ends on {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "—"}</div>
+              <div className="text-xs text-gray-600 mt-2">
+                Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}
+              </div>
             </div>
 
-            <div className="bg-white p-4 rounded-lg border">
-              <div className="text-sm text-gray-500">Current Highest Bid</div>
-              <div className="text-xl font-bold mt-1">₹{currentPrice ?? "-"}</div>
-
-              <div className="mt-4">
-                <label className="text-sm text-gray-600">Manual Bid Amount</label>
-                <input
-                  type="number"
-                  className="w-full mt-2 p-3 border rounded"
-                  placeholder="Enter amount"
-                  value={bidAmount}
-                  onChange={(e) => setBidAmount(e.target.value)}
-                />
-                <button
-                  className="w-full mt-3 bg-yellow-400 text-black font-semibold py-2 rounded disabled:opacity-60"
-                  onClick={async () => {
-                    // basic validation
-                    const val = Number(bidAmount);
-                    if (!val || isNaN(val) || val <= 0) {
-                      alert("Enter a valid bid amount");
-                      return;
-                    }
-
-                    const current = Number(currentPrice || 0);
-                    const minInc = Number(auction?.minIncrement || 1);
-                    const minAllowed = current + minInc;
-                    if (val < minAllowed) {
-                      alert(`Your bid must be at least ₹${minAllowed}`);
-                      return;
-                    }
-
-                    try {
-                      setPlacingBid(true);
-                      await placeBid(auction._id, val);
-                      // refresh auction + topBids
-                      const res = await getAuction(auction._id);
-                      setAuction(res?.auction || res || auction);
-                      setTopBids(res?.topBids || []);
-                      setBidAmount("");
-                      alert("Bid placed successfully");
-                    } catch (err) {
-                      console.error("placeBid error:", err);
-                      alert(err?.message || err?.toString() || "Failed to place bid");
-                    } finally {
-                      setPlacingBid(false);
-                    }
-                  }}
-                  disabled={placingBid || !hasPaid}
-                >
-                  {placingBid ? "Placing..." : bidAmount ? `Place Bid - ₹${bidAmount}` : "Place Bid"}
-                </button>
-
-                {!paymentCheckLoading && !hasPaid && (
-                  <div className="mt-2 text-sm text-red-600">You must pay the participation fee before placing bids. Use the button above to pay.</div>
-                )}
-                {paymentCheckLoading && (
-                  <div className="mt-2 text-sm text-gray-600">Checking payment status...</div>
-                )}
-                {paymentStatus === "PENDING" && (
-                  <div className="mt-2 text-sm text-yellow-700">Payment pending — it will be enabled once captured.</div>
-                )}
-              </div>
-
-                <div className="mt-4">
-                  <button
-                    onClick={() => navigate(`/pay-fee/${auction._id}`)}
-                    className="w-full mb-2 bg-blue-600 text-white font-semibold py-2 rounded"
-                  >
-                    Pay Participation Fee
-                  </button>
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <div>Auto-Bid</div>
-                    <input type="checkbox" />
+            {/* Bidding Section - Only show if not seller */}
+            {!isSeller && (
+              <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Place Your Bid</h3>
+                
+                {/* Current Price */}
+                <div className="bg-gray-50 p-3 rounded mb-4 flex justify-between items-center">
+                  <div>
+                    <div className="text-xs text-gray-600 mb-1">Current Highest Bid</div>
+                    <div className="text-xl font-bold text-gray-900">₹{currentPrice ?? "-"}</div>
                   </div>
+                  <div className="text-xs text-green-600 font-medium">Reserve price met</div>
                 </div>
-            </div>
 
-            <div className="bg-white p-4 rounded-lg border">
-              <h4 className="font-semibold mb-3">Live Auction Activity</h4>
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {topBids.length === 0 && <div className="text-sm text-gray-500">No activity yet.</div>}
-                {topBids.map((b, i) => (
-                  <div key={i} className="flex items-center justify-between bg-gray-50 p-3 rounded">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-sm">{(b?.bidderId?.username || b?.bidderId?.name || (b?.bidderId?.email || "").split("@")[0] || "U").slice(0,2).toUpperCase()}</div>
-                      <div>
-                        <div className="text-sm font-medium">{b?.bidderId?.username || b?.bidderId?.name || (b?.bidderId?.email || '').split('@')[0] || 'Anonymous'}</div>
-                        <div className="text-xs text-gray-500">{b?.timestamp ? new Date(b.timestamp).toLocaleString() : ''}</div>
-                      </div>
-                    </div>
-                    <div className="text-sm font-semibold">₹{b?.amount}</div>
+                {/* Manual Bid Input */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium text-gray-900">
+                      Manual Bid Amount
+                    </label>
+                    <span className="text-xs text-gray-500">Min. bid increment - ₹{auction?.minIncrement || 200}</span>
                   </div>
-                ))}
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
+                    <input
+                      type="number"
+                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-lg font-semibold"
+                      placeholder="Enter amount"
+                      value={bidAmount}
+                      onChange={(e) => setBidAmount(e.target.value)}
+                      disabled={!isAuctionLive || autoBidEnabled || isSeller}
+                    />
+                  </div>
+                  <button
+                    className="w-full mt-3 bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 rounded disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+                    onClick={handlePlaceBid}
+                    disabled={!isAuctionLive || placingBid || autoBidEnabled || isSeller}
+                  >
+                    {placingBid ? "Placing..." : bidAmount ? `Place Bid - ₹${bidAmount}` : "Place Bid"}
+                  </button>
+
+                  {/* Status Messages */}
+                  {!isAuctionLive && !isSeller && (
+                    <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
+                      Bidding is only allowed when auction is LIVE
+                    </div>
+                  )}
+                  {autoBidEnabled && (
+                    <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                      Manual bidding disabled while auto-bid is active
+                    </div>
+                  )}
+                </div>
+
+                {/* Auto-Bid Section */}
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900">Auto-Bid</span>
+                        <button 
+                          className="text-xs text-gray-500 hover:text-gray-700"
+                          title="Set your maximum bid and let our system automatically bid for you up to that amount"
+                        >
+                        </button>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Set your maximum bid and let our system automatically bid for you up to that amount
+                      </div>
+                      {autoBidData && (
+                        <div className="text-xs text-gray-600 mt-1 font-medium">Max Limit: ₹{autoBidData.maxLimit}</div>
+                      )}
+                    </div>
+                    
+                    {/* Toggle Switch */}
+                    <label className="relative inline-flex items-center cursor-pointer ml-3">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={autoBidEnabled}
+                        onChange={(e) => handleToggleAutoBid(e.target.checked)}
+                        disabled={autoBidLoading}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  {autoBidData && (
+                    <button
+                      onClick={() => setShowAutoBidModal(true)}
+                      className="w-full text-xs text-blue-600 hover:text-blue-700 hover:underline mt-2 text-left"
+                      disabled={autoBidLoading}
+                    >
+                      Edit Auto-Bid Settings
+                    </button>
+                  )}
+                </div>
+
+              </div>
+            )}
+
+            {isSeller && (
+              <div className="bg-white p-4 rounded-lg shadow">
+                <div className="text-center text-gray-600">
+                  <p className="text-sm">You are the seller of this auction</p>
+                </div>
+              </div>
+            )}
+
+            {/* Bid History */}
+            <div className="bg-white p-5 rounded-lg shadow border border-gray-200">
+              <h4 className="text-lg font-bold text-gray-900 mb-4">Live Auction Activity</h4>
+              <div className="space-y-0 max-h-80 overflow-y-auto">
+                {topBids.length === 0 ? (
+                  <div className="text-sm text-gray-500 text-center py-6">No bids yet</div>
+                ) : (
+                  <>
+                    {topBids.slice(0, 5).map((bid, i) => {
+                      const bidderData = bid?.userId || bid?.bidderId;
+                      const bidderName = bidderData?.username || 
+                                        bidderData?.name || 
+                                        (bidderData?.email || "").split("@")[0] || 
+                                        "Anonymous";
+                       const isLeading = i === 0;
+                       
+                      const getTimeAgo = (createdAt) => {
+                        if (!createdAt) return "";
+                        const now = Date.now();
+                        const bidTime = new Date(createdAt).getTime();
+                        const diffMs = now - bidTime;
+                        const diffMins = Math.floor(diffMs / 60000);
+                        const diffSecs = Math.floor(diffMs / 1000);
+                        
+                        if (diffSecs < 30) return "Just now";
+                        if (diffMins < 1) return `${diffSecs} sec ago`;
+                        if (diffMins < 60) return `${diffMins} min ago`;
+                        const diffHours = Math.floor(diffMins / 60);
+                        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+                        const diffDays = Math.floor(diffHours / 24);
+                        return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+                      };
+                      
+                      return (
+                        <div key={i} className={`flex items-center justify-between p-3 ${
+                          isLeading ? 'bg-green-50' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }`}>
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
+                              <div className="w-full h-full bg-blue-600 text-white flex items-center justify-center font-semibold text-sm">
+                                {bidderName.slice(0, 2).toUpperCase()}
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="text-sm font-semibold text-gray-900">{bidderName}</div>
+                                  <div className="text-xs text-gray-700">
+                                    Placed Bid: <span className="font-semibold">₹{bid?.amount?.toLocaleString()}</span>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-500 text-right ml-2">
+                                  {getTimeAgo(bid?.createdAt)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {topBids.length > 0 && (
+                      <button
+                        onClick={() => navigate(`/auction/${id}/bid-history`)}
+                        className="w-full py-3 mt-2 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition"
+                      >
+                        View Full Bidding History
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
+
           </div>
         </aside>
       </div>
+
+      {/* Auto-Bid Modal */}
+      {showAutoBidModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-xl font-semibold mb-4 text-gray-900">
+              {autoBidData ? "Edit Auto-Bid" : "Set Up Auto-Bid"}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+              Set your maximum bid limit. The system will automatically place bids on your behalf 
+              when others bid, keeping you in the lead up to your maximum limit.
+            </p>
+            
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-700 block mb-2">
+                Maximum Bid Amount
+              </label>
+              <input
+                type="number"
+                className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter maximum amount"
+                value={autoBidAmount}
+                onChange={(e) => setAutoBidAmount(e.target.value)}
+              />
+              <div className="text-xs text-gray-500 mt-2">
+                Current: ₹{currentPrice} • Min increment: ₹{auction?.minIncrement || 1}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowAutoBidModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition"
+                disabled={autoBidLoading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSetupAutoBid}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition"
+                disabled={autoBidLoading}
+              >
+                {autoBidLoading ? "Saving..." : "Save Auto-Bid"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

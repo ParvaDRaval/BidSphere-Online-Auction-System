@@ -84,13 +84,14 @@ app.use("/bidsphere/admin", (req, res, next) => {
   return restrictAdminIP(req, res, next);
 }, adminRoutes)
 
+// Bid Route
+import bidRoutes from "./routes/bidRoutes.js";
+app.use("/BidSphere/auctions/:auctionId/bid", bidRoutes);
+
 // Auction Route
 import auctionRoutes from "./routes/auctionRoutes.js";
 app.use("/bidsphere/auctions", auctionRoutes);
 
-// Bid Route
-import bidRoutes from "./routes/bidRoutes.js";
-app.use("/BidSphere/:auctionId/bid", bidRoutes);
 
 // Payment Routes
 import paymentRoutes from "./routes/paymentRoutes.js";

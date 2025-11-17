@@ -99,7 +99,6 @@ export const updateAuction = (id, body) => {
 };
 export const deleteAuction = (id) => del(`${BASE_AUCTION}/${id}`);
 export const createAuction = (payload) => postJSON(`${BASE_AUCTION}/create`, payload);
-export const placeBid = (auctionId, amount) => postJSON(`/BidSphere/${auctionId}/bid/place`, { amount });
 export const getMyAuctions = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_AUCTION}/mine${qs ? `?${qs}` : ""}`);
@@ -148,6 +147,24 @@ export async function uploadImagesFormData(formData) {
   return data;
 }
 
+// Bidding APIs
+export const placeBid = (auctionId, amount) => 
+  postJSON(`${BASE_AUCTION}/${auctionId}/bid/place`, { amount });
+
+export const setAutoBid = (auctionId, maxLimit) => 
+  postJSON(`${BASE_AUCTION}/${auctionId}/bid/setauto`, { maxLimit });
+
+export const editAutoBid = (auctionId, autobidId, maxLimit) => 
+  postJSON(`${BASE_AUCTION}/${auctionId}/bid/editauto/${autobidId}`, { maxLimit });
+
+export const activateAutoBid = (auctionId, autobidId) => 
+  postJSON(`${BASE_AUCTION}/${auctionId}/bid/activateauto/${autobidId}`, {});
+
+export const deactivateAutoBid = (auctionId, autobidId) => 
+  postJSON(`${BASE_AUCTION}/${auctionId}/bid/deactivateauto/${autobidId}`, {});
+
+export const getUserAutoBid = (auctionId) => 
+  getJSON(`${BASE_AUCTION}/${auctionId}/bid/myautobid`);
 
 // Payment APIs
 export const createUpiOrder = (payload) => postJSON(`${BASE_UPI}/create-order`, payload);
