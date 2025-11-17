@@ -167,10 +167,7 @@ export const getUserAutoBid = (auctionId) =>
   getJSON(`${BASE_AUCTION}/${auctionId}/bid/myautobid`);
 
 // Payment APIs
-export const createUpiOrder = (payload) => postJSON(`${BASE_UPI}/create-order`, payload);
-export const createCodOrder = (payload) => postJSON(`${BASE_UPI}/create-cod`, payload);
-export const getPaymentStatus = (paymentId) => getJSON(`${BASE_UPI}/status/${paymentId}`);
-export const getPayee = () => getJSON(`${BASE_UPI}/payee`);
+
 // Admin notifications (payment verifications)
 export const getAdminNotifications = () => getJSON(`${BASE_ADMIN}/notifications`);
 export const confirmAdminNotification = (id) => postJSON(`${BASE_ADMIN}/notifications/${id}/confirm`, {});
@@ -178,8 +175,10 @@ export const rejectAdminNotification = (id) => postJSON(`${BASE_ADMIN}/notificat
 // Auction-scoped payment endpoints (backend paymentRoutes)
 export const createRegistrationPayment = (auctionId) => postJSON(`${BASE_AUCTION}/${auctionId}/au-registration/pay`, {});
 export const verifyAuctionPayment = (auctionId, paymentId, payload) => postJSON(`${BASE_AUCTION}/${auctionId}/${paymentId}/verify`, payload);
+// Winning payment endpoints (final payment by winner)
+export const createWinningCodPayment = (auctionId) => postJSON(`${BASE_AUCTION}/${auctionId}/finalpay/cod`, {});
+export const createWinningUpiPayment = (auctionId) => postJSON(`${BASE_AUCTION}/${auctionId}/finalpay/upi`, {});
 // legacy/admin verify kept for compatibility
-export const verifyPayment = (payload) => postJSON(`${BASE_PAYMENTS}/verify-payment`, payload);
 export const listPayments = (queryParams = {}) => {
   const params = new URLSearchParams(queryParams).toString();
   return getJSON(`${BASE_PAYMENTS}/payments${params ? `?${params}` : ''}`);

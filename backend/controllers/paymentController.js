@@ -5,6 +5,11 @@ import AdminNotification from '../models/AdminNotification.js';
 import { generateUpiLink } from '../services/payment.service.js';
 import {  SendCODSelectedEmail, SendUPISelectedEmail, SendPaymentVerificationRequestSent} from '../services/email.sender.js';
 
+// simple local paymentId generator to avoid null unique index collisions
+function generatePaymentId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2,9)}`;
+}
+
 export const handleRegistrationPayment = async (req, res) => {
   try {
     const { auctionId } = req.params;
@@ -33,6 +38,7 @@ export const handleRegistrationPayment = async (req, res) => {
 
       // make payment object
       const payment = await Payment.create({ 
+        paymentId: generatePaymentId(),
         provider: "upi",
         amount: registrationFees,
         auctionId: auctionId,
@@ -91,6 +97,7 @@ export const handleWinningCodPayment = async (req, res) => {
     const expireTime = 24 * 60 * 60 * 1000;
 
     const payment = await Payment.create({ 
+      paymentId: generatePaymentId(),
       provider: "cod",
       amount: auction.winningPrice,
       auctionId: auctionId,
@@ -146,6 +153,7 @@ export const handleWinningUpiPayment = async (req, res) => {
     const upiLink = await generateUpiLink(auctionId, auction.winningPrice);
 
     const payment = await Payment.create({ 
+      paymentId: generatePaymentId(),
       provider: "upi",
       amount: auction.winningPrice,
       auctionId: auctionId,

@@ -5,11 +5,17 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "./src/setupTests.js",
+  },
   resolve: {
     alias: {
       react: path.resolve(__dirname, "node_modules", "react"),
       "react-dom": path.resolve(__dirname, "node_modules", "react-dom"),
     },
+    
   },
   server: {
     port: 3000,

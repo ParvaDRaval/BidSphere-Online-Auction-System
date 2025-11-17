@@ -56,7 +56,7 @@ export default function ExploreCategories({ categories }) {
           {list.map((c) => (
             <Link
               key={c.value}
-              to={`/categories/${c.value}`}
+              to={`/categories?category=${encodeURIComponent(c.value)}`}
               className="group block bg-white border rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
             >
               <div className="h-48 bg-gray-100 overflow-hidden flex items-center justify-center">

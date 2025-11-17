@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listAuctions } from "../api";
 import homeImg from "../assets/home.png";
+import ExploreCategories from "./ExploreCategories";
 /* eslint-disable react/prop-types */
 
 function AuctionCard({ auction }) {
@@ -127,7 +128,10 @@ function Home() {
           )}
         </div>
       </div>
-
+      <div>
+        <ExploreCategories />
+      </div>
+          
       {/* (Explore by Category removed per request) */}
       {/* How it works banner */}
       <div className="bg-[#FEC338] border-t-4 border-blue-500 rounded-lg p-6 mb-6">
@@ -203,6 +207,7 @@ function Home() {
       </div>
 
       {/* Main auctions list removed per request (no auctions shown after reviews) */}
+       
     </div>
   );
 }
