@@ -25,5 +25,4 @@ transporter.verify(function (error, success) {
 });
 
 
-
 export default transporter;

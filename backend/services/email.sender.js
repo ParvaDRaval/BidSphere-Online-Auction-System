@@ -496,6 +496,49 @@ const SendPaymentVerificationRequestSent = async (email, name, auctionName, reqF
   }
 };
 
+const SendSellerWinnerNotification = async (
+  email,
+  sellerName,
+  winnerName,
+  auctionName,
+  saleAmount,
+  listingFee,
+  netEarnings,
+  address
+) => {
+  try {
+    const htmlContent = Seller_Winner_Notification_Template
+      .replace("{sellerName}", sellerName)
+      .replace("{winnerName}", winnerName)
+      .replace("{auctionName}", auctionName)
+      .replace("{saleAmount}", saleAmount)
+      .replace("{listingFee}", listingFee)
+      .replace("{netEarnings}", netEarnings)
+      .replace("{address}", address);
+
+    const body = {
+      sender: { email: process.env.BREVO_FROM_EMAIL },
+      to: [{ email }],
+      subject: "Your Auction Item Has Been Sold!",
+      htmlContent,
+    };
+
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "api-key": process.env.BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    console.log("Seller Auction Sold email sent:", await response.json());
+  } catch (error) {
+    console.log("Error sending seller auction sold email:", error);
+  }
+};
+
+
 
 export { 
     SendVerificationCode, 
@@ -507,5 +550,6 @@ export {
     SendUPISelectedEmail, 
     SendPaymentVerifiedEmail,
     SendPaymentRejection,
-    SendPaymentVerificationRequestSent
+    SendPaymentVerificationRequestSent,
+    SendSellerWinnerNotification
  };
