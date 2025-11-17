@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listAuctions } from "../api";
-import homeImg from "../assets/home.jpg";
+import homeImg from "../assets/home.png";
 /* eslint-disable react/prop-types */
 
 function AuctionCard({ auction }) {
@@ -81,21 +81,24 @@ function Home() {
   }, []);
 
   return (
-    <div className="p-6">
+    <div className="w-full">
       {/* Hero banner with overlay */}
-      <div className="relative w-full rounded-lg overflow-hidden mb-6">
-        <div className="h-96 bg-cover bg-center" style={{ backgroundImage: `url(${homeImg})` }} />
-        <div className="absolute inset-0 bg-black/30 flex items-center">
-          <div className="max-w-6xl mx-auto px-6 text-center text-white">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Where Buyers & Sellers Meet</h1>
-            <p className="text-lg md:text-xl mb-6">Discover everything from everyday finds to rare treasures — all in one trusted online auction hub.</p>
-            {/* CTAs removed per request */}
+      <div className="relative w-full overflow-hidden mb-6 h-[calc(100vh-64px)]">
+        <img src={homeImg} alt="Home banner" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-black/40 flex items-center">
+          <div className="max-w-6xl mx-auto px-6 md:text-left text-center text-white h-full flex flex-col justify-center md:pl-12">
+            <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-4 drop-shadow-xl">Where Buyers & Sellers Meet</h1>
+            <p className="text-lg md:text-xl mb-6 max-w-xl mx-auto md:mx-0 drop-shadow-md">Discover everything from everyday finds to rare treasures — all in one trusted online auction hub.</p>
+            <div className="flex gap-4 justify-center md:justify-start">
+              <Link to="/register" className="bg-yellow-400 hover:bg-yellow-500 text-black px-6 py-3 rounded-lg font-semibold shadow-md text-lg">Register Free</Link>
+              <Link to="/auctions" className="bg-white text-gray-800 px-6 py-3 rounded-lg font-medium shadow-sm text-lg">Browse Auctions</Link>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Featured Live Auctions */}
-      <div className="mb-6">
+      <div className="mb-6 px-4 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold">Featured Live Auctions</h2>

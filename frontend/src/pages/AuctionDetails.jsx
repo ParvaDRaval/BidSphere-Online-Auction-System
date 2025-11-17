@@ -93,16 +93,21 @@ function AuctionDetails() {
     return () => (mounted = false);
   }, [auction?._id]);
 
-  // countdown
+  // countdown: target end OR start when auction is UPCOMING
   useEffect(() => {
     function compute() {
-      const end = new Date(auction?.endTime || auction?.endsAt || auction?.end).getTime();
-      if (!end || isNaN(end)) {
+      const isUpcoming = String(auction?.status || "").toUpperCase() === "UPCOMING";
+      const targetValue = isUpcoming
+        ? (auction?.startTime || auction?.startsAt || auction?.start)
+        : (auction?.endTime || auction?.endsAt || auction?.end);
+      const target = targetValue ? new Date(targetValue).getTime() : NaN;
+
+      if (!target || isNaN(target)) {
         setTimeLeft({ days: "--", hours: "--", mins: "--", secs: "--" });
         return;
       }
       const now = Date.now();
-      const diff = Math.max(0, end - now);
+      const diff = Math.max(0, target - now);
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
       const mins = Math.floor((diff / (1000 * 60)) % 60);
@@ -114,7 +119,7 @@ function AuctionDetails() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(compute, 1000);
     return () => clearInterval(intervalRef.current);
-  }, [auction?.endTime, auction]);
+  }, [auction]);
 
   if (loading) return <div className="p-6">Loading auction...</div>;
   if (error) return <div className="p-6 text-red-600">{error}</div>;
@@ -234,7 +239,7 @@ function AuctionDetails() {
             </div>
 
             <div className="bg-yellow-100 p-4 rounded-lg">
-              <div className="text-sm text-gray-700 font-semibold">AUCTION ENDS IN</div>
+              <div className="text-sm text-gray-700 font-semibold">{String(auction?.status || "").toUpperCase() === "UPCOMING" ? "AUCTION STARTS IN" : "AUCTION ENDS IN"}</div>
               <div className="mt-3 grid grid-cols-4 gap-2">
                 <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold">{timeLeft.days}</div>
@@ -253,7 +258,13 @@ function AuctionDetails() {
                   <div className="text-xs">SECS</div>
                 </div>
               </div>
-              <div className="text-xs text-gray-600 mt-2">Ends on {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "—"}</div>
+              <div className="text-xs text-gray-600 mt-2">
+                {String(auction?.status || "").toUpperCase() === "UPCOMING" ? (
+                  <>Starts on { (auction?.startTime || auction?.startsAt || auction?.start) ? new Date(auction.startTime || auction.startsAt || auction.start).toLocaleString() : "—" }</>
+                ) : (
+                  <>Ends on { (auction?.endTime || auction?.endsAt || auction?.end) ? new Date(auction.endTime || auction.endsAt || auction.end).toLocaleString() : "—" }</>
+                )}
+              </div>
             </div>
 
             <div className="bg-white p-4 rounded-lg border">

@@ -20,6 +20,9 @@ export const handleRegistrationPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" });
     }
   
+    // allow configuration whether registration during UPCOMING is open via env
+    const isRegistrationOpen = process.env.REGISTRATION_OPEN === "true";
+
     if (auction.status === "LIVE" || (auction.status === "UPCOMING" && isRegistrationOpen)) {
       
       const registrationFees = 0.01 * auction.startingPrice; // 1% of startingPrice
@@ -33,7 +36,7 @@ export const handleRegistrationPayment = async (req, res) => {
         provider: "upi",
         amount: registrationFees,
         auctionId: auctionId,
-        userid: userId,
+        userId: userId,
         status: "PENDING",
         type: "REGISTRATION FEES", 
         upiLink: upiLink,
@@ -91,7 +94,7 @@ export const handleWinningCodPayment = async (req, res) => {
       provider: "cod",
       amount: auction.winningPrice,
       auctionId: auctionId,
-      userid: userId,
+      userId: userId,
       status: "PENDING",
       type: "WINNING PAYMENT",
       expiry: expireTime    
@@ -146,7 +149,7 @@ export const handleWinningUpiPayment = async (req, res) => {
       provider: "upi",
       amount: auction.winningPrice,
       auctionId: auctionId,
-      userid: userId,
+      userId: userId,
       status: "PENDING",
       type: "WINNING PAYMENT",
       upiLink: upiLink,
@@ -196,7 +199,7 @@ export const verifyPayment = async (req, res) => {
 
     await payment.save();
 
-    await AdminNotification({ 
+    await AdminNotification.create({ 
       auctionId,
       userId,
       type: "PAYMENT VERIFICATION",

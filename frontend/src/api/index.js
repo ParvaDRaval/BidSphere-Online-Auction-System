@@ -154,6 +154,14 @@ export const createUpiOrder = (payload) => postJSON(`${BASE_UPI}/create-order`, 
 export const createCodOrder = (payload) => postJSON(`${BASE_UPI}/create-cod`, payload);
 export const getPaymentStatus = (paymentId) => getJSON(`${BASE_UPI}/status/${paymentId}`);
 export const getPayee = () => getJSON(`${BASE_UPI}/payee`);
+// Admin notifications (payment verifications)
+export const getAdminNotifications = () => getJSON(`${BASE_ADMIN}/notifications`);
+export const confirmAdminNotification = (id) => postJSON(`${BASE_ADMIN}/notifications/${id}/confirm`, {});
+export const rejectAdminNotification = (id) => postJSON(`${BASE_ADMIN}/notifications/${id}/reject`, {});
+// Auction-scoped payment endpoints (backend paymentRoutes)
+export const createRegistrationPayment = (auctionId) => postJSON(`${BASE_AUCTION}/${auctionId}/au-registration/pay`, {});
+export const verifyAuctionPayment = (auctionId, paymentId, payload) => postJSON(`${BASE_AUCTION}/${auctionId}/${paymentId}/verify`, payload);
+// legacy/admin verify kept for compatibility
 export const verifyPayment = (payload) => postJSON(`${BASE_PAYMENTS}/verify-payment`, payload);
 export const listPayments = (queryParams = {}) => {
   const params = new URLSearchParams(queryParams).toString();
