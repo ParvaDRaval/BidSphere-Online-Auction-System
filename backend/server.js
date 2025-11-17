@@ -11,7 +11,24 @@ app.set("trust proxy", true);
 
 // CORS configuration for production
 const corsOptions = {
-  origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
+  origin: (origin, callback) => {
+  if (!origin) return callback(null, true); // allows postman
+
+  const main = process.env.CLIENT_ORIGIN; // allows frontend domain
+  const localhost = /^http:\/\/localhost:\d+$/; // for local dev
+  const vercelPreview = /^https:\/\/bid-sphere-online-auction-s.*\.vercel\.app$/; //for different branches github before pulling to main
+
+  if (
+    origin === main ||
+    localhost.test(origin) ||
+    vercelPreview.test(origin)
+  ) {
+    callback(null, true);
+  } else {
+    callback(new Error("Not allowed by CORS: " + origin));
+  }
+},
+
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
@@ -67,13 +84,14 @@ app.use("/bidsphere/admin", (req, res, next) => {
   return restrictAdminIP(req, res, next);
 }, adminRoutes)
 
+// Bid Route
+import bidRoutes from "./routes/bidRoutes.js";
+app.use("/BidSphere/auctions/:auctionId/bid", bidRoutes);
+
 // Auction Route
 import auctionRoutes from "./routes/auctionRoutes.js";
 app.use("/bidsphere/auctions", auctionRoutes);
 
-// Bid Route
-import bidRoutes from "./routes/bidRoutes.js";
-app.use("/BidSphere/:auctionId/bid", bidRoutes);
 
 // Payment Routes
 import paymentRoutes from "./routes/paymentRoutes.js";

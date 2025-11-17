@@ -207,8 +207,8 @@ async function getAuctionById(req, res) {
     const topBids=await Bid.find({auctionId: auction._id })
       .sort({amount: -1 })
       .limit(10)// top 10 bids fetched rn
-      .select("bidderId amount timestamp")
-      .populate("bidderId", "username email")
+      .select("userId amount createdAt")
+      .populate("userId", "username email")
       .lean();
 
     return res.status(200).json({
