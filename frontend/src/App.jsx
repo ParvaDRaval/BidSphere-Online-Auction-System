@@ -12,6 +12,7 @@ import AdminLogin from "./pages/AdminLogin";
 import CreateAuction from "./pages/CreateAuction";
 import EditAuctionDraft from "./pages/EditAuctionDraft";
 import AuctionDetails from "./pages/AuctionDetails";
+import BidHistory from "./pages/BidHistory";
 import Auctions from "./pages/Auctions";
 import UserDashboard from "./pages/UserDashboard";
 import MyListings from "./pages/MyListings";
@@ -36,6 +37,7 @@ function App() {
         <Route path="/verifyemail" element={<VerifyEmail />} />
         <Route path="/create-auction" element={<CreateAuction />} />
         <Route path="/auction/:id" element={<AuctionDetails />} />
+        <Route path="/auction/:id/bid-history" element={<BidHistory />} />
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/my-listings" element={<MyListings />} />
         <Route path="/pay-fee" element={<PayFees />} />
