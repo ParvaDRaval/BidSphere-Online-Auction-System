@@ -8,20 +8,21 @@ import {
 } from "../controllers/autoBidController.js";
 import { restrictToLoggedinUserOnly } from "../middleware/authMiddleware.js";
 import { validateBid, validateAutoBid } from "../middleware/bidValidMiddleware.js";
+import { validateRegistration } from  "../middleware/tokenValidMiddleware.js" 
 
 const router = express.Router({ mergeParams: true });
 
 //bid
-router.post("/place", restrictToLoggedinUserOnly, validateBid, placeBid);
+router.post("/place", restrictToLoggedinUserOnly,validateRegistration, validateBid, placeBid);
 
 //autobid
-router.post("/setauto", restrictToLoggedinUserOnly, validateAutoBid, setAutoBid);
+router.post("/setauto", restrictToLoggedinUserOnly, validateRegistration, validateAutoBid, setAutoBid);
 
-router.post("/editauto/:autobidId", restrictToLoggedinUserOnly, validateAutoBid, editAutoBid);
+router.post("/editauto/:autobidId", restrictToLoggedinUserOnly, validateRegistration, validateAutoBid, editAutoBid);
 
-router.post("/deactivateauto/:autobidId", restrictToLoggedinUserOnly, deactivateAutoBid);
+router.post("/deactivateauto/:autobidId", restrictToLoggedinUserOnly, validateRegistration, deactivateAutoBid);
 
-router.post("/activateauto/:autobidId", restrictToLoggedinUserOnly, activateAutoBid);
+router.post("/activateauto/:autobidId", restrictToLoggedinUserOnly, validateRegistration, activateAutoBid);
 
 // get my autobid for an auction
 router.get("/myautobid", restrictToLoggedinUserOnly, async (req, res) => {
