@@ -5,6 +5,11 @@ import AdminNotification from '../models/AdminNotification.js';
 import { generateUpiLink } from '../services/payment.service.js';
 import {  SendCODSelectedEmail, SendUPISelectedEmail, SendPaymentVerificationRequestSent} from '../services/email.sender.js';
 
+// simple local paymentId generator to avoid null unique index collisions
+function generatePaymentId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2,9)}`;
+}
+
 export const handleRegistrationPayment = async (req, res) => {
   try {
     const { auctionId } = req.params;
@@ -20,6 +25,9 @@ export const handleRegistrationPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" });
     }
   
+    // allow configuration whether registration during UPCOMING is open via env
+    const isRegistrationOpen = process.env.REGISTRATION_OPEN === "true";
+
     if (auction.status === "LIVE" || (auction.status === "UPCOMING" && isRegistrationOpen)) {
       
       const registrationFees = 0.01 * auction.startingPrice; // 1% of startingPrice
@@ -30,10 +38,11 @@ export const handleRegistrationPayment = async (req, res) => {
 
       // make payment object
       const payment = await Payment.create({ 
+        paymentId: generatePaymentId(),
         provider: "upi",
         amount: registrationFees,
         auctionId: auctionId,
-        userid: userId,
+        userId: userId,
         status: "PENDING",
         type: "REGISTRATION FEES", 
         upiLink: upiLink,
@@ -88,10 +97,11 @@ export const handleWinningCodPayment = async (req, res) => {
     const expireTime = 24 * 60 * 60 * 1000;
 
     const payment = await Payment.create({ 
+      paymentId: generatePaymentId(),
       provider: "cod",
       amount: auction.winningPrice,
       auctionId: auctionId,
-      userid: userId,
+      userId: userId,
       status: "PENDING",
       type: "WINNING PAYMENT",
       expiry: expireTime    
@@ -143,10 +153,11 @@ export const handleWinningUpiPayment = async (req, res) => {
     const upiLink = await generateUpiLink(auctionId, auction.winningPrice);
 
     const payment = await Payment.create({ 
+      paymentId: generatePaymentId(),
       provider: "upi",
       amount: auction.winningPrice,
       auctionId: auctionId,
-      userid: userId,
+      userId: userId,
       status: "PENDING",
       type: "WINNING PAYMENT",
       upiLink: upiLink,
@@ -196,7 +207,7 @@ export const verifyPayment = async (req, res) => {
 
     await payment.save();
 
-    await AdminNotification({ 
+    await AdminNotification.create({ 
       auctionId,
       userId,
       type: "PAYMENT VERIFICATION",

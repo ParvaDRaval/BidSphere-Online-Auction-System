@@ -161,8 +161,8 @@ async function handleResetPwdEmail (req, res) {
     user.resetTokenExpiry = resetTokenExpiry;
     await user.save();
 
-    const rawFrontend = process.env.FRONTEND_URL || (`${req.protocol}://${req.get("host")}`);
-    const frontendUrl = rawFrontend.replace(/\/+$/, "");
+    // Prefer an explicit FRONTEND_URL from env; fall back to common dev port used by Vite
+    const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
     // token + email so frontend can prefill and backend can verify
     const resetPwdLink = `${frontendUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 

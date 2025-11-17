@@ -1,7 +1,12 @@
 import mongoose from 'mongoose';
 
 const PaymentSchema = new mongoose.Schema({
-    
+    // internal payment id (human-friendly/short)
+    paymentId: {
+        type: String,
+        unique: true,
+        default: function() { return `${Date.now().toString(36)}${Math.random().toString(36).slice(2,9)}` }
+    },
     // payment id - by default id provided by MongoDB
     provider: { 
         type: String, 

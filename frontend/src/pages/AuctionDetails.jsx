@@ -65,6 +65,22 @@ function AuctionDetails() {
     return () => (mounted = false);
   }, [id]);
 
+  // Fetch current user early to avoid UI flash for sellers
+  useEffect(() => {
+    let mounted = true;
+    (async function fetchMe() {
+      try {
+        const me = await getCurrentUser().catch(() => null);
+        if (!mounted) return;
+        const user = me?.user || null;
+        setCurrentUser(user);
+      } catch (err) {
+        // ignore
+      }
+    })();
+    return () => (mounted = false);
+  }, []);
+
   // fetch current user and check payment status for this auction
   useEffect(() => {
     let mounted = true;
@@ -83,19 +99,33 @@ function AuctionDetails() {
           return;
         }
 
+        // If auction already has this user registered (admin-confirmed), treat as paid
+        try {
+          const regs = auction?.registrations || auction?.registeredUsers || [];
+          const isRegistered = Array.isArray(regs) && regs.some((r) => String(r) === String(user._id));
+          if (isRegistered) {
+            setHasPaid(true);
+            setPaymentStatus("REGISTERED");
+            return;
+          }
+        } catch (e) {
+          // ignore and continue to payment lookup
+        }
+
          // call admin payments list (backend supports filtering)
         const res = await listPayments({ auctionId: auction._id, bidderId: user._id });
         // res.data is array
         const payments = res?.data || [];
-        // prefer CAPTURED
-        const captured = payments.find((p) => p.status === "CAPTURED");
-        if (captured) {
+        // consider multiple backend-paid statuses (admin sets 'SUCCESS')
+        const paidStatuses = ["CAPTURED", "SUCCESS", "PAID", "COMPLETED"];
+        const paid = payments.find((p) => paidStatuses.includes((p.status || "").toUpperCase()));
+        if (paid) {
           setHasPaid(true);
-          setPaymentStatus("CAPTURED");
+          setPaymentStatus(paid.status || "SUCCESS");
         } else {
-          const pending = payments.find((p) => p.status === "PENDING");
+          const pending = payments.find((p) => (p.status || "").toUpperCase() === "PENDING");
           setHasPaid(false);
-          setPaymentStatus(pending ? "PENDING" : null);
+          setPaymentStatus(pending ? pending.status : null);
         }
       } catch (err) {
         console.error("checkUserAndPayment error:", err);
@@ -287,6 +317,121 @@ function AuctionDetails() {
   const currentPrice = auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice;
   const isSeller = currentUser?._id && seller?._id && currentUser._id.toString() === seller._id.toString();
   const isAuctionLive = auction?.status === "LIVE";
+
+  // If user has not paid registration fee and is not the seller, show pre-payment landing page
+  // Ensure sellers never see the registration/pay UI
+  if (!hasPaid && (!currentUser || !isSeller)) {
+    return (
+      <div className="p-6 bg-[#f7f5f0] min-h-screen">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h1 className="text-2xl font-semibold">{auction?.title || auction?.item?.name}</h1>
+                  <div className="text-sm text-gray-600 mt-1">{auction?.item?.category} • {auction?.item?.condition}</div>
+                </div>
+                <div>
+                  <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
+                    auction?.status === "LIVE" ? "bg-green-100 text-green-800" :
+                    auction?.status === "UPCOMING" ? "bg-blue-100 text-blue-800" :
+                    auction?.status === "ENDED" ? "bg-gray-100 text-gray-800" :
+                    "bg-yellow-100 text-yellow-800"
+                  }`}>{auction?.status || "N/A"}</span>
+                </div>
+              </div>
+
+              <div className="w-full h-96 bg-gray-100 rounded overflow-hidden mb-4">
+                {images.length > 0 ? (
+                  <img src={images[0]} alt={auction?.item?.name || "Auction"} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">No image available</div>
+                )}
+              </div>
+
+              {images.length > 1 && (
+                <div className="flex items-center gap-3 overflow-x-auto mb-2">
+                  {images.slice(0,6).map((src,i) => (
+                    <img key={i} src={src} alt={`thumb-${i}`} className="w-20 h-14 object-cover rounded border" />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <aside className="lg:col-span-4">
+            <div className="sticky top-6 space-y-4">
+              <div className="bg-yellow-100 p-4 rounded-lg shadow">
+                <div className="text-sm text-gray-700 font-semibold">AUCTION ENDS IN</div>
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold">{timeLeft.days}</div>
+                    <div className="text-xs">DAYS</div>
+                  </div>
+                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold">{timeLeft.hours}</div>
+                    <div className="text-xs">HOURS</div>
+                  </div>
+                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold">{timeLeft.mins}</div>
+                    <div className="text-xs">MINS</div>
+                  </div>
+                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold">{timeLeft.secs}</div>
+                    <div className="text-xs">SECS</div>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600 mt-2">Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}</div>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg border">
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="bg-gray-50 p-3 rounded">
+                    <div className="text-xs text-gray-500">Starting Bid</div>
+                    <div className="font-semibold">₹{auction?.startingPrice ?? '-'}</div>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded">
+                    <div className="text-xs text-gray-500">Current Bid</div>
+                    <div className="font-semibold text-green-700">₹{currentPrice ?? '-'}</div>
+                  </div>
+                </div>
+
+                <div className="mb-3 text-sm text-gray-600">
+                  <div>Auction Starts: {auction?.startTime ? new Date(auction.startTime).toLocaleString() : '—'}</div>
+                  <div>Auction Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : '—'}</div>
+                </div>
+
+                <button onClick={() => navigate(`/registration-fee/${auction._id}`)} className="w-full mb-2 bg-blue-600 text-white py-3 rounded font-semibold">
+                  Pay Token Fee • ₹{Math.round((auction?.startingPrice || 0) * 0.01) || 0}
+                </button>
+
+                <button disabled className="w-full mb-2 bg-yellow-400 text-black py-3 rounded font-semibold opacity-60">
+                  Place Bid • ₹{currentPrice ?? '-'}
+                </button>
+
+                <button className="w-full mb-2 bg-gray-100 text-gray-800 py-2 rounded">Add to Watchlist</button>
+
+                <div className="flex gap-2 mt-2">
+                  <button className="flex-1 py-2 border rounded">Share</button>
+                  <button className="flex-1 py-2 border rounded">Report</button>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h4 className="font-semibold mb-2">Live Auction Activity</h4>
+                <div className="text-sm text-gray-500">{topBids.length === 0 ? 'No bids yet' : `Top bid: ₹${topBids[0]?.amount}`}</div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <div className="max-w-7xl mx-auto mt-6 bg-white p-4 rounded-lg shadow">
+          <h3 className="font-semibold mb-2">Item Details</h3>
+          <p className="text-sm text-gray-700">{auction?.description || auction?.item?.description || 'No description provided.'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-[#f3f3f3] min-h-screen">
