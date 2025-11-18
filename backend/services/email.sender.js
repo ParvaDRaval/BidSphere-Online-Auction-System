@@ -1,4 +1,3 @@
-import transporter  from "./email.transporter.js";
 import { Verification_Email_Template } from "../email-templates/verify_email.template.js"
 import { Welcome_Email_Template } from "../email-templates/welcome_email.template.js"
 import { Outbid_Email_Template } from "../email-templates/outbid_email.template.js"
