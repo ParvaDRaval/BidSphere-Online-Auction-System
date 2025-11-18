@@ -87,7 +87,7 @@ export const handleWinningCodPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" });
     }
 
-    if (userId !== auction.auctionWinner) {
+    if (!auction.auctionWinner || auction.auctionWinner.toString() !== userId.toString()) {
       return res.status(400).json({ success: false, message: "You are not the Winner" });
     }
 
@@ -141,7 +141,7 @@ export const handleWinningUpiPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" });
     }
 
-    if (userId !== auction.auctionWinner) {
+    if (!auction.auctionWinner || auction.auctionWinner.toString() !== userId.toString()) {
       return res.status(400).json({ success: false, message: "You are not the Winner" });
     }
 
