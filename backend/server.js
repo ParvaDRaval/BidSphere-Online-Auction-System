@@ -97,5 +97,8 @@ app.use("/bidsphere/auctions", auctionRoutes);
 import paymentRoutes from "./routes/paymentRoutes.js";
 app.use("/bidsphere/auctions", paymentRoutes);
 
+// Delivery Routes
+import deliveryRoutes from "./routes/deliveryRoutes.js";
+app.use("/bidsphere/delivery", deliveryRoutes);
 
 export default app;
