@@ -24,7 +24,7 @@ import RegistrationFee from "./pages/RegistrationFee";
 import Contact from "./pages/contact";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-
+import Settings from "./pages/AuctionSettings";
 function App() {
   return (
     <div className="bg-[#fdfbf6] min-h-screen">
@@ -51,6 +51,7 @@ function App() {
           path="/registration-fee/:auctionId"
           element={<RegistrationFee />}
         />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/edit-auction-draft/:id" element={<EditAuctionDraft />} />

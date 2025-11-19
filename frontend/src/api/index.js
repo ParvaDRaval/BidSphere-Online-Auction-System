@@ -188,3 +188,21 @@ export const listPayments = (queryParams = {}) => {
 
 export const requestPasswordReset = (payload) => postJSON(`${BASE_USER}/forgetpwd`, payload);
 export const resetPassword = (payload) => postJSON(`${BASE_USER}/resetpwd`, payload);
+
+export async function updateUserProfile(profileData) {
+  const response = await fetch(`${BASE_USER}/profile`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(profileData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: "Request failed" }));
+    throw new Error(error.message || "Failed to update profile");
+  }
+
+  return response.json();
+}
