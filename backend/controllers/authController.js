@@ -127,10 +127,26 @@ async function verifyEmail (req, res) {
 async function getCurrentUser(req, res) {
   try {
     // checkAuth middleware may set req.user to decoded token or null
-    const user = req.user;
-    if (!user) return res.status(200).json({ user: null });
-    // return only public fields
-    return res.status(200).json({ user: { username: user.username || user.name, email: user.email, _id: user._id } });
+    const tokenUser = req.user;
+    if (!tokenUser) return res.status(200).json({ user: null });
+
+    // Fetch full user profile from DB to ensure we return address, bio, fullname, profilePhoto, etc.
+    const fullUser = await User.findById(tokenUser._id).select('-password -verificationCode -resetToken -resetTokenExpiry').lean();
+    if (!fullUser) return res.status(200).json({ user: null });
+
+    // Normalize fields for frontend consumption
+    const publicUser = {
+      _id: fullUser._id,
+      username: fullUser.username,
+      email: fullUser.email,
+      fullname: fullUser.fullname || '',
+      bio: fullUser.bio || '',
+      address: fullUser.address || null,
+      profilePhoto: fullUser.profilePhoto || null,
+      isVerified: !!fullUser.isVerified,
+    };
+
+    return res.status(200).json({ user: publicUser });
   } catch (err) {
     console.error("getCurrentUser error:", err);
     return res.status(500).json({ user: null, message: err.message });

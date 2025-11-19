@@ -156,7 +156,7 @@ export default function MyBids() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  to="/buyer/dashboard"
+                  to="/buyer-dashboard"
                   className="block py-2 px-3 rounded hover:bg-gray-50"
                 >
                   Dashboard

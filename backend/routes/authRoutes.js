@@ -5,6 +5,7 @@ import { handleRegister , handleLogin, handleLogout, verifyEmail, getCurrentUser
 import { checkAuth } from "../middleware/authMiddleware.js";
 // add user controller
 import { getWatchlist, addToWatchlist, removeFromWatchlist, getBiddingHistory, updateUserProfile } from "../controllers/userController.js";
+import { getMyPayments } from "../controllers/paymentController.js";
 
 router.post("/register", handleRegister);
 router.post("/verifyemail", verifyEmail);
@@ -23,6 +24,9 @@ router.delete("/watchlist/:auctionId", checkAuth, removeFromWatchlist);
 
 // bidding history
 router.get("/bidding-history", checkAuth, getBiddingHistory);
+
+// User payments (winning payments created by this user)
+router.get("/payments", checkAuth, getMyPayments);
 
 // Update user profile
 router.put("/profile", checkAuth, updateUserProfile);

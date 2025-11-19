@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { logoutUser, getCurrentUser } from "../api"; 
 import { logoutAdmin } from "../api/index";
@@ -10,6 +10,8 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation(); 
   const [searchTerm, setSearchTerm] = useState("");
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
 
   //Load from local storage if data is already available
   const loadAuthFromStorage = () => {
@@ -60,6 +62,16 @@ function Navbar() {
     })();
     return () => { mounted = false; };
   }, [location]);
+
+  // close menu when clicking outside
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(e.target)) setShowMenu(false);
+    }
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, []);
 
   // listen to storage events so navbar updates when auth changes in other tabs
   useEffect(() => {
@@ -148,14 +160,40 @@ function Navbar() {
         )}
 
         {user && (
-          <>
-            <li><Link to="/dashboard">Dashboard</Link></li>
-            <li>
-              <button onClick={handleUserLogout} className="bg-white px-3 py-1 rounded-md">
-                Logout
-              </button>
-            </li>
-          </>
+          <li className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowMenu((s) => !s)}
+              className="flex items-center gap-2 bg-white px-3 py-1 rounded-md hover:shadow"
+              aria-haspopup="true"
+              aria-expanded={showMenu}
+            >
+              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{(user.username || user.email || "U").slice(0,2).toUpperCase()}</div>
+              <span className="hidden sm:inline">{user.username || (user.email || '').split('@')[0]}</span>
+            </button>
+
+            {showMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded shadow-lg z-50 border">
+                <div className="px-4 py-3 border-b">
+                  <div className="font-semibold">{user.username || (user.email || '').split('@')[0]}</div>
+                  <div className="text-xs text-gray-500">Account</div>
+                </div>
+                <ul className="py-2">
+                  <li>
+                    <Link to="/seller-dashboard" className="block px-4 py-2 hover:bg-gray-50">SELLER Dashboard</Link>
+                  </li>
+                  <li>
+                    <Link to="/buyer-dashboard" className="block px-4 py-2 hover:bg-gray-50">BIDDER Dashboard</Link>
+                  </li>
+                  <li>
+                    <Link to="/settings" className="block px-4 py-2 hover:bg-gray-50">Account Settings</Link>
+                  </li>
+                  <li>
+                    <button onClick={handleUserLogout} className="w-full text-left px-4 py-2 hover:bg-gray-50">Log Out</button>
+                  </li>
+                </ul>
+              </div>
+            )}
+          </li>
         )}
 
         {admin && (

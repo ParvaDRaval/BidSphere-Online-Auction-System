@@ -42,7 +42,7 @@ function ListingCard({ id, title = "Auction Name", starting = "₹250", status =
   );
 }
 
-export default function UserDashboard() {
+export default function UserDashboardSeller() {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
   const [deletingId, setDeletingId] = useState(null);

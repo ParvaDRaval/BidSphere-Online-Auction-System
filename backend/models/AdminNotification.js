@@ -15,9 +15,10 @@ const AdminNotificationSchema = new mongoose.Schema({
         type: String, 
         required: true,
         enum: [
-            "PAYMENT VERIFICATION",
-            "WINNER CHOOSE COD",
-            "WINNER CHOOSE UPI"
+                "PAYMENT VERIFICATION",
+                "WINNER CHOOSE COD",
+                "WINNER CHOOSE UPI",
+                "PAYMENT_SUCCESS_DELIVERY_PENDING"
         ]
     },                 
     payment: {

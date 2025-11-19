@@ -20,7 +20,7 @@ export async function getBiddingHistory(req, res) {
 
     // count distinct auctions user has bidded on
     const countAgg = await Bid.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       { $group: { _id: "$auctionId" } },
       { $count: "total" },
     ]);
@@ -28,7 +28,7 @@ export async function getBiddingHistory(req, res) {
 
     // aggregate latest bid per auction with auction metadata
     const agg = await Bid.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       { $sort: { createdAt: -1 } },
       {
         $group: {
@@ -97,11 +97,13 @@ export async function getWatchlist(req, res) {
     const userId = req.user?._id;
     if (!userId) return res.status(401).json({ message: "Unauthorized", watchlist: [] });
 
-    const items = await Watchlist.find({ userId: mongoose.Types.ObjectId(userId) })
+    const items = await Watchlist.find({ userId: new mongoose.Types.ObjectId(userId) })
       .sort({ createdAt: -1 })
       .populate({
         path: "auctionId",
-        select: "title item currentBid startingPrice totalBids endTime status item.images",
+        // Avoid selecting both `item` and `item.images` together (causes projection collision in MongoDB)
+        // Select the auction fields we need; `item` includes `images` so no need to list both.
+        select: "title item currentBid startingPrice totalBids endTime status",
       })
       .lean();
 
@@ -141,7 +143,7 @@ export async function addToWatchlist(req, res) {
     const auction = await Auction.findById(auctionId).lean();
     if (!auction) return res.status(400).json({ message: "Auction not found" });
 
-    const existing = await Watchlist.findOne({ userId: mongoose.Types.ObjectId(userId), auctionId: mongoose.Types.ObjectId(auctionId) });
+    const existing = await Watchlist.findOne({ userId: new mongoose.Types.ObjectId(userId), auctionId: new mongoose.Types.ObjectId(auctionId) });
     if (existing) return res.status(200).json({ success: true, watchlistId: existing._id });
 
     const created = await Watchlist.create({ userId, auctionId });
@@ -160,7 +162,7 @@ export async function removeFromWatchlist(req, res) {
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     if (!auctionId) return res.status(400).json({ message: "auctionId required" });
 
-    await Watchlist.deleteOne({ userId: mongoose.Types.ObjectId(userId), auctionId: mongoose.Types.ObjectId(auctionId) });
+    await Watchlist.deleteOne({ userId: new mongoose.Types.ObjectId(userId), auctionId: new mongoose.Types.ObjectId(auctionId) });
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("removeFromWatchlist error:", err);
