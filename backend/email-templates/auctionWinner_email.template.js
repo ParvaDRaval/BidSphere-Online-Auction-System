@@ -1,4 +1,4 @@
-const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:5000').replace(/\/+$/, "");
+const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, "");
 
 export const Auction_Winner_Email_Template = `
 <!DOCTYPE html>
@@ -37,13 +37,15 @@ export const Auction_Winner_Email_Template = `
             display: inline-block;
             padding: 12px 25px;
             margin: 10px 10px 0 0;
-            background-color: #2196F3;
+            background-color: #16a34a;
             color: white;
             text-decoration: none;
             border-radius: 5px;
             font-size: 16px;
         }
-        .button.cod { background-color: #FF9800; }
+        .button:hover {
+            background-color: #15803d;
+        }
         .footer {
             background-color: #f4f4f4;
             padding: 15px;
@@ -64,12 +66,13 @@ export const Auction_Winner_Email_Template = `
             <p>Congratulations! You have won the auction for:</p>
             <p><strong>Auction:</strong> {auctionName}</p>
 
-            <p>Please choose a payment method within <strong>24 hours</strong>:</p>
+            <p>Please complete your payment within <strong>24 hours</strong> to secure your winning bid.</p>
 
-            <a href="${BACKEND_URL}/bidsphere/auctions/${'{auctionId}'}/finalpay/upi" class="button">UPI Payment</a>
-            <a href="${BACKEND_URL}/5000/bidsphere/auctions/${'{auctionId}'}/finalpay/cod" class="button cod">Cash on Delivery (COD)</a>
+            <a href="${FRONTEND_URL}/auction/${'{auctionId}'}/pay" class="button">Pay Now</a>
 
-            <p>If no payment option is selected in time, the order will be cancelled.</p>
+            <p>If payment is not completed in time, the order will be cancelled and the item may be offered to the next highest bidder.</p>
+            
+            <p>You can also access the payment page from your <a href="${FRONTEND_URL}/buyer-dashboard">Bidder Dashboard</a>.</p>
         </div>
 
         <div class="footer">
