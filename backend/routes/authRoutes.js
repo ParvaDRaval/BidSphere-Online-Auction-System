@@ -4,7 +4,7 @@ const router = express.Router();
 import { handleRegister , handleLogin, handleLogout, verifyEmail, getCurrentUser, handleResetPwdEmail, handleResetPwd } from "../controllers/authController.js";
 import { checkAuth } from "../middleware/authMiddleware.js";
 // add user controller
-import { getWatchlist, addToWatchlist, removeFromWatchlist, getBiddingHistory } from "../controllers/userController.js";
+import { getWatchlist, addToWatchlist, removeFromWatchlist, getBiddingHistory, updateUserProfile } from "../controllers/userController.js";
 
 router.post("/register", handleRegister);
 router.post("/verifyemail", verifyEmail);
@@ -23,5 +23,8 @@ router.delete("/watchlist/:auctionId", checkAuth, removeFromWatchlist);
 
 // bidding history
 router.get("/bidding-history", checkAuth, getBiddingHistory);
+
+// Update user profile
+router.put("/profile", checkAuth, updateUserProfile);
 
 export default router;

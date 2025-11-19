@@ -167,3 +167,49 @@ export async function removeFromWatchlist(req, res) {
     return res.status(500).json({ message: err.message });
   }
 }
+export async function updateUserProfile(req, res) {
+  try {
+    const userId = req.user?._id;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const { fullname, bio, address, profilePhoto } = req.body;
+    const updateData = {};
+
+    if (fullname !== undefined) updateData.fullname = fullname;
+    if (bio !== undefined) updateData.bio = bio;
+    if (profilePhoto !== undefined) updateData.profilePhoto = profilePhoto;
+    
+    // Handle nested address update
+    if (address) {
+      updateData.address = {
+        street: address.street || '',
+        city: address.city || '',
+        state: address.state || '',
+        postalCode: address.postalCode || '',
+        country: address.country || ''
+      };
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).select('-password -verificationCode -resetToken -resetTokenExpiry');
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: updatedUser,
+      message: "Profile updated successfully"
+    });
+  } catch (err) {
+    console.error("updateUserProfile error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Failed to update profile"
+    });
+  }
+}
