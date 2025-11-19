@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import Auction from "../models/Auction.js";
-import Bid from "../models/Bids.js";
+import User from "../models/User.js";
+import { SendAuctionWinnerEmail} from "../services/email.sender.js"
 import { logAuctionEvent } from "../services/logger.service.js";
 
 let _cronJob = null;
@@ -55,6 +56,49 @@ async function processStatusUpdateBatch(query, newStatus, eventType, eventDetail
   return totalUpdated;
 }
 
+// winner announcement
+async function assignWinnersForAuctions(auctionIds) {
+  if (!auctionIds.length) return;
+
+  for (const id of auctionIds) {
+    
+    const auction = await Auction.findById(id);
+    if (!auction) continue;
+
+    // no winner then just skip
+    if (!auction.currentWinner) continue;
+
+    // set winner fields
+    auction.winningPrice = auction.currentBid;
+    auction.currentBid = null;
+    auction.auctionWinner = auction.currentWinner;
+    auction.currentWinner = null;
+
+    await auction.save();
+
+    // fetch winner user
+    const winner = await User.findById(auction.auctionWinner);
+    if (winner) {
+      await SendAuctionWinnerEmail(
+        winner.email,
+        winner.username,
+        auction.title
+      );
+    }
+
+    // fetch seller user
+    const seller = await User.findById(auction.seller);
+    if (seller) {
+      await SendSellerAuctionEndEmail(
+        seller.email,
+        seller.username,
+        auction.title,
+        auction.winningPrice
+      );
+    }
+  }
+}
+
 // updates in log
 async function updateAuctionStatuses() {
   if (_isRunning) {return;}
@@ -107,44 +151,17 @@ async function updateAuctionStatuses() {
       "AUCTION_ENDED"
     );
 
-    // After auction ends, set the auction winner based on highest bid
-    if (endedAuctions.length > 0) {
-      for (const auction of endedAuctions) {
-        const highestBid = await Bid.findOne({ auctionId: auction._id })
-          .sort({ amount: -1 })
-          .select("userId amount")
-          .lean();
-
-        if (highestBid) {
-          await Auction.findByIdAndUpdate(auction._id, {
-            auctionWinner: highestBid.userId,
-            winningPrice: highestBid.amount
-          });
-        }
-      }
-    }
+    const endedIds = endedAuctions.map(a => a._id);
+    await assignWinnersForAuctions(endedIds);
 
     // Also check for any ENDED auctions without winners (in case they were missed)
-    const endedWithoutWinners = await Auction.find({
+    const missed = await Auction.find({
       status: "ENDED",
       auctionWinner: { $exists: false }
     }).select("_id").lean();
 
-    if (endedWithoutWinners.length > 0) {
-      console.log(`Found ${endedWithoutWinners.length} ended auctions without winners, fixing...`);
-      for (const auction of endedWithoutWinners) {
-        const highestBid = await Bid.findOne({ auctionId: auction._id })
-          .sort({ amount: -1 })
-          .select("userId amount")
-          .lean();
-
-        if (highestBid) {
-          await Auction.findByIdAndUpdate(auction._id, {
-            auctionWinner: highestBid.userId,
-            winningPrice: highestBid.amount
-          });
-        }
-      }
+    if (missed.length > 0) {
+      await assignWinnersForAuctions(missed.map(a => a._id));
     }
 
     const duration = Date.now() - startTime;
