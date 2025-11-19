@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getCurrentUser, getWatchlist, getBiddingHistory } from "../api";
+import { getCurrentUser, getWatchlist, getBiddingHistory, getMyDeliveries, getMyPayments } from "../api";
 /* eslint-disable react/prop-types */
 
 function StatCard({ title, value, small }) {
@@ -71,15 +71,29 @@ export default function UserDashboardBuyer() {
 
       try {
         setLoadingLists(true);
-        const [wlRes, bhRes] = await Promise.allSettled([
+        const [wlRes, bhRes, delRes, payRes] = await Promise.allSettled([
           getWatchlist(),
           getBiddingHistory(),
+          getMyDeliveries(),
+          getMyPayments(),
         ]);
         if (!mounted) return;
         if (wlRes.status === "fulfilled")
           setWatchlist(wlRes.value?.watchlist || []);
         if (bhRes.status === "fulfilled")
           setBiddingHistory(bhRes.value?.history || []);
+        if (delRes.status === "fulfilled") {
+          const deliveries = delRes.value?.deliveries || delRes.value || [];
+          // build a set of auction ids that have deliveries
+          const set = new Set((deliveries || []).map(d => String(d.auctionId?._id || d.auctionId)));
+          setDeliveriesSet(set);
+        }
+        if (payRes.status === "fulfilled") {
+          const payments = payRes.value?.payments || payRes.value || [];
+          // build a set of auction ids for payments that are SUCCESS
+          const paySet = new Set((payments || []).filter(p => (p.status || '').toUpperCase() === 'SUCCESS').map(p => String(p.auctionId)));
+          setPaymentsSuccessSet(paySet);
+        }
       } catch (err) {
         console.error("list fetch error:", err);
       } finally {
@@ -89,6 +103,9 @@ export default function UserDashboardBuyer() {
     load();
     return () => (mounted = false);
   }, []);
+
+  const [deliveriesSet, setDeliveriesSet] = useState(new Set());
+  const [paymentsSuccessSet, setPaymentsSuccessSet] = useState(new Set());
 
   const displayName =
     (user && (user.username || user.name || user.email)) || "First Last";
@@ -122,14 +139,14 @@ export default function UserDashboardBuyer() {
 
           <nav className="mt-6">
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  to="/buyer/dashboard"
+             <li>
+              <Link 
+                 to="/buyer-dashboard"
                   className="block py-2 px-3 rounded bg-green-50 font-medium"
-                >
-                  Dashboard
-                </Link>
-              </li>
+                  >
+                    Dashboard
+                  </Link>
+             </li>
               <li>
                 <Link
                   to="/my-bids"
@@ -291,9 +308,51 @@ export default function UserDashboardBuyer() {
               )}
             </div>
             <div className="mt-4 text-center">
-              <Link to="/bidding-history" className="text-blue-600">
+              <Link to="/my-bids" className="text-blue-600">
                 View All History
               </Link>
+            </div>
+          </div>
+
+          {/* Unpaid Wins: show auctions the user won but may not have paid yet */}
+          <div className="bg-white border rounded-lg p-6">
+            <h2 className="text-lg font-semibold mb-4">Unpaid Wins</h2>
+            <div className="space-y-3">
+              {loadingLists ? (
+                <div className="text-sm text-gray-500">Loading...</div>
+              ) : (
+                  (biddingHistory || [])
+                  .filter((b) => b.youWon)
+                  .filter((b) => (b.auctionId?.status || '').toUpperCase() === 'ENDED')
+                  // exclude auctions that already have a successful payment
+                  .filter((b) => {
+                    const aid = String(b.auctionId?._id || b._id || '');
+                    return !paymentsSuccessSet.has(aid);
+                  })
+                  .map((b, idx) => {
+                    const aid = String(b.auctionId?._id || b._id || '');
+                    const hasDelivery = deliveriesSet.has(aid);
+                    const hasPaymentSuccess = paymentsSuccessSet.has(aid);
+                    return (
+                      <div key={b._id || b.auctionId?._id || idx} className="bg-gray-50 p-3 rounded border flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{b.auctionId?.title || b.title || 'Auction'}</div>
+                          <div className="text-xs text-gray-500">Final: {b.final ? `₹${b.final}` : b.amount ? `₹${b.amount}` : b.current ? `₹${b.current}` : '-'}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {hasDelivery ? (
+                            <Link to={`/delivery`} className="px-3 py-2 bg-gray-200 text-gray-800 rounded text-sm">Delivery Saved</Link>
+                          ) : hasPaymentSuccess ? (
+                            <Link to={`/delivery/create/${aid}`} className="px-3 py-2 bg-orange-500 text-white rounded text-sm">Delivery Pending</Link>
+                          ) : (
+                            <Link to={`/auction/${b.auctionId?._id || b._id}/pay`} className="px-3 py-2 bg-green-600 text-white rounded text-sm">Pay Now</Link>
+                          )}
+                          <Link to={`/auction/${b.auctionId?._id || b._id}`} className="text-sm text-blue-600">View</Link>
+                        </div>
+                      </div>
+                    )
+                  })
+              )}
             </div>
           </div>
 

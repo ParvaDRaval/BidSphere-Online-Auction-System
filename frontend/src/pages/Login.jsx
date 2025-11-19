@@ -77,7 +77,7 @@ function Login() {
      
       <div className="w-1/2 pl-12">
         <h2 className="text-3xl font-bold mb-6">Log in</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <input
             type="email"
             name="email"

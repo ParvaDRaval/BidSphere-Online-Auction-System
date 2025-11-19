@@ -88,8 +88,42 @@ export default function Watchlist() {
 
         const res = await getWatchlist();
         if (!mounted) return;
-        const list = res?.watchlist || res?.data || [];
-        setWatchlist(Array.isArray(list) ? list : []);
+
+        // Normalize different possible response shapes returned by the API
+        let list = [];
+        if (Array.isArray(res?.watchlist)) list = res.watchlist;
+        else if (Array.isArray(res?.data?.watchlist)) list = res.data.watchlist;
+        else if (Array.isArray(res?.data)) list = res.data;
+        else if (Array.isArray(res)) list = res;
+
+        // Normalize each watchlist item so the UI can rely on predictable fields
+        const normalized = (list || []).map((item) => {
+          const w = { ...item };
+
+          // Cases we may receive from the backend:
+          // - { auction: { _id: '...', title: '...' } }
+          // - { auctionId: '...' }
+          // - { auctionId: { _id: '...', title: '...' } }
+          // Ensure we always have `auction` as object (when available) and `auctionId` as string
+          if (w.auction && typeof w.auction === "object" && w.auction._id) {
+            w.auctionId = String(w.auction._id);
+          } else if (w.auctionId && typeof w.auctionId === "object" && w.auctionId._id) {
+            // backend sometimes embeds auction object into auctionId
+            w.auction = w.auctionId;
+            w.auctionId = String(w.auctionId._id);
+          } else if (w.auction && typeof w.auction === "string" && !w.auctionId) {
+            w.auctionId = w.auction;
+          }
+
+          // Ensure any nested _id is a string for consistent comparisons
+          if (w.auction && typeof w.auction === "object" && w.auction._id) {
+            w.auction._id = String(w.auction._id);
+          }
+
+          return w;
+        });
+
+        setWatchlist(normalized);
       } catch (err) {
         console.error("getWatchlist error:", err);
       } finally {

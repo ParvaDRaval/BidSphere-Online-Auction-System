@@ -14,17 +14,18 @@ import EditAuctionDraft from "./pages/EditAuctionDraft";
 import AuctionDetails from "./pages/AuctionDetails";
 import BidHistory from "./pages/BidHistory";
 import Auctions from "./pages/Auctions";
-import UserDashboard from "./pages/UserDashboard";
+import UserDashboardSeller from "./pages/UserDashboardSeller";
 import MyListings from "./pages/MyListings";
 import MyBids from "./pages/MyBids";
 import Watchlist from "./pages/Watchlist";
 import UserDashboardBuyer from "./pages/UserDashboardBuyer";
-
+import PayFees from "./pages/PayFees";
+import DeliveryCreate from "./pages/DeliveryCreate";
 import RegistrationFee from "./pages/RegistrationFee";
 import Contact from "./pages/contact";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-
+import Settings from "./pages/AuctionSettings";
 function App() {
   return (
     <div className="bg-[#fdfbf6] min-h-screen">
@@ -41,7 +42,7 @@ function App() {
         <Route path="/create-auction" element={<CreateAuction />} />
         <Route path="/auction/:id" element={<AuctionDetails />} />
         <Route path="/auction/:id/bid-history" element={<BidHistory />} />
-        <Route path="/dashboard" element={<UserDashboard />} />
+        <Route path="/seller-dashboard" element={<UserDashboardSeller />} />
         <Route path="/my-listings" element={<MyListings />} />
         <Route path="/my-bids" element={<MyBids />} />
         <Route path="/watchlist" element={<Watchlist />} />
@@ -51,10 +52,13 @@ function App() {
           path="/registration-fee/:auctionId"
           element={<RegistrationFee />}
         />
+          <Route path="/auction/:id/pay" element={<PayFees />} />
+          <Route path="/delivery/create/:auctionId" element={<DeliveryCreate />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/edit-auction-draft/:id" element={<EditAuctionDraft />} />
-        <Route path="/buyer/dashboard" element={<UserDashboardBuyer />} />
+        <Route path="/buyer-dashboard" element={<UserDashboardBuyer />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
