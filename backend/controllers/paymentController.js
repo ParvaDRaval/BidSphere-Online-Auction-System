@@ -29,8 +29,8 @@ export const handleRegistrationPayment = async (req, res) => {
     const isRegistrationOpen = process.env.REGISTRATION_OPEN === "true";
 
     if (auction.status === "LIVE" || (auction.status === "UPCOMING" && isRegistrationOpen)) {
-      
-      const registrationFees = 0.01 * auction.startingPrice; // 1% of startingPrice
+
+      const registrationFees = Math.max(0.01 * auction.startingPrice, 1); // Minimum of 1% of startingPrice or 1 rupee
 
       const upiLink = await generateUpiLink(auctionId, registrationFees);
       
@@ -87,7 +87,7 @@ export const handleWinningCodPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" });
     }
 
-    if (userId !== auction.auctionWinner) {
+    if (!auction.auctionWinner || auction.auctionWinner.toString() !== userId.toString()) {
       return res.status(400).json({ success: false, message: "You are not the Winner" });
     }
 
@@ -141,7 +141,7 @@ export const handleWinningUpiPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" });
     }
 
-    if (userId !== auction.auctionWinner) {
+    if (!auction.auctionWinner || auction.auctionWinner.toString() !== userId.toString()) {
       return res.status(400).json({ success: false, message: "You are not the Winner" });
     }
 

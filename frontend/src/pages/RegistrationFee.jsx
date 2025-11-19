@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import QRCode from 'react-qr-code';
 import {
   getAuction,
   getCurrentUser,
@@ -149,6 +150,13 @@ export default function RegistrationFee() {
                 <div className="mt-2">
                   <a href={payment.upiLink} target="_blank" rel="noreferrer" className="text-blue-600">Open UPI link</a>
                   <button className="ml-2 px-2 py-1 bg-gray-100 rounded" onClick={() => navigator.clipboard?.writeText(payment.upiLink)}>Copy</button>
+                </div>
+              )}
+
+              {payment.upiLink && (
+                <div className="mt-4 flex flex-col items-center">
+                  <div className="text-sm text-gray-600 mb-2">Scan QR Code to Pay</div>
+                  <QRCode value={payment.upiLink} size={200} />
                 </div>
               )}
 

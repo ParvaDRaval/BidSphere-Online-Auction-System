@@ -276,6 +276,17 @@ async function confirmNotification(req, res) {
       if (payment) {
         payment.status = 'SUCCESS';
         await payment.save();
+
+        if (payment.type === 'WINNING PAYMENT') {
+          await AdminNotification.create({
+            auctionId: notif.auctionId,
+            userId: notif.userId,
+            type: 'PAYMENT_SUCCESS_DELIVERY_PENDING',
+            payment: payment._id,
+            status: 'PENDING',
+            message: 'Winning payment verified. Waiting for buyer to submit delivery address.'
+          });
+        }
       }
     }
 
