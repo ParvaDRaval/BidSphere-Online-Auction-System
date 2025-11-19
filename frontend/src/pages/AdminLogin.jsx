@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import loginImg from "../assets/login.jpg"; 
 import { Link, useNavigate } from "react-router-dom";
 import { loginAdmin } from "../api"; 
+import { toast } from "react-toastify";
 
 function AdminLogin() {
   const [form, setForm] = useState({
@@ -34,7 +35,7 @@ function AdminLogin() {
 
     const err = validate();
     if (err) {
-      alert(err);
+      toast.error(err);
       return;
     }
 
@@ -46,10 +47,10 @@ function AdminLogin() {
         localStorage.setItem("bidsphere_admin", JSON.stringify(res.admin));
       }
 
-      alert(res?.message || "Admin login successful");
+      toast.success(res?.message || "Admin login successful");
       navigate("/admin/dashboard");
     } catch (err) {
-      alert(err?.message || "Login failed");
+      toast.error(err?.message || "Login failed");
     } finally {
       setIsSubmitting(false);
       setForm({ email: "", password: "", remember: false });

@@ -7,6 +7,7 @@ import {
   createRegistrationPayment,
   verifyAuctionPayment,
 } from '../api';
+import { toast } from 'react-toastify';
 
 function formatINR(v) {
   try { return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(v)); }
@@ -97,7 +98,7 @@ export default function RegistrationFee() {
     try {
       setVerifying(true);
       await verifyAuctionPayment(routeId, payment._id || payment.paymentId, { upiAccountName: payerName || payerVpa, upiTxnId: txnId });
-      alert('Verification requested');
+      toast.info('Verification requested');
       navigate(`/auction/${routeId}`);
     } catch (err) {
       console.error(err);

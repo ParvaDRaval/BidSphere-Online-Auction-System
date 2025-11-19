@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import registerImg from "../assets/register.jpg";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../api";
+import { toast } from "react-toastify";
 
 function Register() {
   const navigate = useNavigate();
@@ -20,19 +21,19 @@ function Register() {
     e.preventDefault();
 
     if (!form.name || !form.email || !form.password) {
-      alert("Please fill out all fields.");
+      toast.error("Please fill out all fields.");
       return;
     }
 
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email)) {
-      alert("Please enter a valid email address.");
+      toast.error("Please enter a valid email address.");
       return;
     }
 
     if (form.password.length < 8) {
-      alert("Password must be at least 8 characters long.");
+      toast.error("Password must be at least 8 characters long.");
       return;
     }
 
@@ -43,10 +44,10 @@ function Register() {
         password: form.password,
       });
 
-      alert(res.message || "Verification OTP sent to your email");
+      toast.success(res.message || "Verification OTP sent to your email");
       navigate("/verifyemail", { state: { email: form.email } });
     } catch (err) {
-      alert(err.message || "Registration failed");
+      toast.error(err.message || "Registration failed");
     } finally {
       setForm({ name: "", email: "", password: "" });
     }

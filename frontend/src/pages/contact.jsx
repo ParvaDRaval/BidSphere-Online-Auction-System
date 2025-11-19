@@ -1,4 +1,5 @@
 import React from "react";
+import { toast } from "react-toastify";
 
 function Contact() {
   return (
@@ -10,7 +11,7 @@ function Contact() {
                 <input type="email" placeholder="Email ID" className="w-full p-3 border rounded mb-4" />
                 <textarea placeholder="Your Message" className="w-full p-3 border rounded mb-4 h-32"></textarea>
             </form>
-            <button onClick={() => { alert("Message sent successfully!") }} className="bg-red-500 text-white px-6 py-2 rounded w-full mb-3">Send Message</button>
+            <button onClick={() => { toast.success("Message sent successfully!") }} className="bg-red-500 text-white px-6 py-2 rounded w-full mb-3">Send Message</button>
         </div>
     </div>
   );

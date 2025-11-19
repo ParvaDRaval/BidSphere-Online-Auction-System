@@ -204,7 +204,7 @@ function AuctionDetails() {
   const handlePlaceBid = async () => {
     const val = Number(bidAmount);
     if (!val || isNaN(val) || val <= 0) {
-      alert("Please enter a valid bid amount");
+      toast.error("Please enter a valid bid amount");
       return;
     }
 
@@ -213,7 +213,7 @@ function AuctionDetails() {
     const minRequired = Number(currentPrice) + minInc;
     
     if (val < minRequired) {
-      alert(`Your bid must be at least ₹${minRequired} (current: ₹${currentPrice} + min increment: ₹${minInc})`);
+      toast.error(`Your bid must be at least ₹${minRequired} (current: ₹${currentPrice} + min increment: ₹${minInc})`);
       return;
     }
 
@@ -224,10 +224,10 @@ function AuctionDetails() {
       setAuction(res?.auction || res || auction);
       setTopBids(res?.topBids || []);
       setBidAmount("");
-      alert("Bid placed successfully!");
+      toast.success("Bid placed successfully!");
     } catch (err) {
       console.error("placeBid error:", err);
-      alert(err?.message || "Failed to place bid");
+      toast.error(err?.message || "Failed to place bid");
     } finally {
       setPlacingBid(false);
     }
@@ -237,7 +237,7 @@ function AuctionDetails() {
   const handleSetupAutoBid = async () => {
     const val = Number(autoBidAmount);
     if (!val || isNaN(val) || val <= 0) {
-      alert("Please enter a valid maximum bid amount");
+      toast.error("Please enter a valid maximum bid amount");
       return;
     }
 
@@ -246,7 +246,7 @@ function AuctionDetails() {
     const minRequired = Number(currentPrice) + minInc;
     
     if (val < minRequired) {
-      alert(`Your maximum bid must be at least ₹${minRequired}`);
+      toast.error(`Your maximum bid must be at least ₹${minRequired}`);
       return;
     }
 
@@ -254,17 +254,17 @@ function AuctionDetails() {
       setAutoBidLoading(true);
       if (autoBidData?._id) {
         await editAutoBid(auction._id, autoBidData._id, val);
-        alert("Auto-bid limit updated!");
+        toast.success("Auto-bid limit updated!");
         setAutoBidData({ ...autoBidData, maxLimit: val });
       } else {
         const result = await setAutoBid(auction._id, val);
         setAutoBidData(result);
-        alert("Auto-bid created successfully!");
+        toast.success("Auto-bid created successfully!");
       }
       setShowAutoBidModal(false);
     } catch (err) {
       console.error("handleSetupAutoBid error:", err);
-      alert(err?.message || "Failed to set up auto-bid");
+      toast.error(err?.message || "Failed to set up auto-bid");
     } finally {
       setAutoBidLoading(false);
     }
@@ -282,15 +282,15 @@ function AuctionDetails() {
       if (enabled) {
         await activateAutoBid(auction._id, autoBidData._id);
         setAutoBidEnabled(true);
-        alert("Auto-bid activated!");
+        toast.success("Auto-bid activated!");
       } else {
         await deactivateAutoBid(auction._id, autoBidData._id);
         setAutoBidEnabled(false);
-        alert("Auto-bid deactivated");
+        toast.success("Auto-bid deactivated");
       }
     } catch (err) {
       console.error("handleToggleAutoBid error:", err);
-      alert(err?.message || "Failed to toggle auto-bid");
+      toast.error(err?.message || "Failed to toggle auto-bid");
       setAutoBidEnabled(!enabled);
     } finally {
       setAutoBidLoading(false);
