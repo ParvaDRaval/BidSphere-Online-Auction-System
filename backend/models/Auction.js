@@ -90,6 +90,11 @@ const auctionSchema = new mongoose.Schema({
 
     totalBids: { type: Number, default: 0 },
     totalParticipants: { type: Number, default: 0 },
+    
+    sellerRating: {
+        average: { type: Number, default: 0 },
+        count: { type: Number, default: 0 }
+    }
 }, { timestamps: true });
   
 auctionSchema.index({ status: 1, endTime: 1 });
