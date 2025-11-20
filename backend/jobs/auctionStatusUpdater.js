@@ -82,7 +82,8 @@ async function assignWinnersForAuctions(auctionIds) {
       await SendAuctionWinnerEmail(
         winner.email,
         winner.username,
-        auction.title
+        auction.title,
+        auction._id
       );
     }
 
