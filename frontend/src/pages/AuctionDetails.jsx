@@ -685,6 +685,37 @@ function AuctionDetails() {
               </div>
             </div>
 
+            {/* Winner Info - Show when auction ended */}
+            {auction?.status === 'ENDED' && topBidderId && topBids && topBids[0] && (
+              <div className="bg-white p-4 rounded-lg border shadow">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🏆</span>
+                  <div className="text-sm font-semibold text-gray-700">AUCTION WINNER</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-lg overflow-hidden">
+                    {topBids[0].userId?.profilePhoto ? (
+                      <img 
+                        src={topBids[0].userId.profilePhoto} 
+                        alt={topBids[0].userId?.username || 'Winner'} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>{(topBids[0].userId?.username || topBids[0].userId?.name || 'W').slice(0,2).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">
+                      {topBids[0].userId?.username || topBids[0].userId?.name || topBids[0].userId?.email?.split('@')[0] || 'Winner'}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Winning Bid: ₹{(highestBid || topBids[0].amount || 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Countdown Timer */}
             <div className="bg-yellow-100 p-4 rounded-lg shadow">
               <div className="text-sm text-gray-700 font-semibold">AUCTION ENDS IN</div>
