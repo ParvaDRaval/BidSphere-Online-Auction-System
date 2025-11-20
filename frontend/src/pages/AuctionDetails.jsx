@@ -12,6 +12,7 @@ import {
   getUserAutoBid,
   addToWatchlist,
   removeFromWatchlist,
+  getWatchlist,
 } from "../api";
 import { toast } from "react-toastify";
 
@@ -90,6 +91,27 @@ function AuctionDetails() {
     })();
     return () => (mounted = false);
   }, []);
+
+  // Check if auction is in user's watchlist
+  useEffect(() => {
+    let mounted = true;
+    async function checkWatchlist() {
+      if (!id || !currentUser?._id) return;
+      try {
+        const res = await getWatchlist();
+        if (!mounted) return;
+        const watchlist = res?.watchlist || [];
+        const isWatchlisted = watchlist.some(
+          (item) => String(item.auctionId?._id || item.auctionId) === String(id)
+        );
+        setWatchlisted(isWatchlisted);
+      } catch (err) {
+        // ignore - user might not be logged in
+      }
+    }
+    checkWatchlist();
+    return () => (mounted = false);
+  }, [id, currentUser?._id]);
 
   // fetch current user and check payment status for this auction
   useEffect(() => {
@@ -681,6 +703,44 @@ function AuctionDetails() {
                     {placingBid ? "Placing..." : bidAmount ? `Place Bid - ₹${bidAmount}` : "Place Bid"}
                   </button>
 
+                  {/* Watchlist Button */}
+                  <button
+                    onClick={async () => {
+                      if (watchlistLoading) return;
+                      setWatchlistLoading(true);
+                      try {
+                        if (!watchlisted) {
+                          await addToWatchlist(auction._id);
+                          setAuction((a) => ({ ...a, watching: (a?.watching || 0) + 1 }));
+                          setWatchlisted(true);
+                          toast.success("Added to watchlist");
+                        } else {
+                          await removeFromWatchlist(auction._id);
+                          setAuction((a) => ({ ...a, watching: Math.max(0, (a?.watching || 1) - 1) }));
+                          setWatchlisted(false);
+                          toast.info("Removed from watchlist");
+                        }
+                      } catch (err) {
+                        console.error("watchlist error:", err);
+                        toast.error(err?.message || "Failed to update watchlist");
+                      } finally {
+                        setWatchlistLoading(false);
+                      }
+                    }}
+                    className={`w-full mt-2 py-2 rounded font-semibold transition ${
+                      watchlisted 
+                        ? 'bg-red-100 text-red-800 hover:bg-red-200' 
+                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                    }`}
+                    disabled={watchlistLoading}
+                  >
+                    {watchlistLoading ? (
+                      watchlisted ? 'Removing...' : 'Adding...'
+                    ) : (
+                      watchlisted ? '❤️ Remove from Watchlist' : '🤍 Add to Watchlist'
+                    )}
+                  </button>
+
                   {/* Status Messages */}
                   {!isAuctionLive && !isSeller && (
                     <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
@@ -743,9 +803,47 @@ function AuctionDetails() {
 
             {isSeller && (
               <div className="bg-white p-4 rounded-lg shadow">
-                <div className="text-center text-gray-600">
+                <div className="text-center text-gray-600 mb-3">
                   <p className="text-sm">You are the seller of this auction</p>
                 </div>
+                
+                {/* Watchlist button for sellers viewing other auctions */}
+                <button
+                  onClick={async () => {
+                    if (watchlistLoading) return;
+                    setWatchlistLoading(true);
+                    try {
+                      if (!watchlisted) {
+                        await addToWatchlist(auction._id);
+                        setAuction((a) => ({ ...a, watching: (a?.watching || 0) + 1 }));
+                        setWatchlisted(true);
+                        toast.success("Added to watchlist");
+                      } else {
+                        await removeFromWatchlist(auction._id);
+                        setAuction((a) => ({ ...a, watching: Math.max(0, (a?.watching || 1) - 1) }));
+                        setWatchlisted(false);
+                        toast.info("Removed from watchlist");
+                      }
+                    } catch (err) {
+                      console.error("watchlist error:", err);
+                      toast.error(err?.message || "Failed to update watchlist");
+                    } finally {
+                      setWatchlistLoading(false);
+                    }
+                  }}
+                  className={`w-full py-2 rounded font-semibold transition ${
+                    watchlisted 
+                      ? 'bg-red-100 text-red-800 hover:bg-red-200' 
+                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                  }`}
+                  disabled={watchlistLoading}
+                >
+                  {watchlistLoading ? (
+                    watchlisted ? 'Removing...' : 'Adding...'
+                  ) : (
+                    watchlisted ? '❤️ Remove from Watchlist' : '🤍 Add to Watchlist'
+                  )}
+                </button>
               </div>
             )}
 

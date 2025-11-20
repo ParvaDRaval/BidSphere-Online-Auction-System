@@ -3,7 +3,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { getWatchlist, removeFromWatchlist, getCurrentUser } from "../api";
 
 function WatchRow({ w, onRemove }) {
-  const auction = w.auction || w.auctionId || {};
+  // Debug: Log the raw data
+  console.log('WatchRow received:', JSON.stringify(w, null, 2));
+  
+  // After normalization, w.auctionId should be a string and w.auction should be the object
+  const auctionId = w.auctionId; // This should already be a string from normalization
+  const auction = w.auction || {}; // This should be the auction object
+  
+  console.log('Auction ID:', auctionId);
+  console.log('Auction object:', auction);
+  
   const img = auction.item?.images?.[0] || auction.images?.[0] || "";
   const title = auction.title || auction.item?.name || "Untitled Auction";
   const current = auction.currentBid ?? auction.current ?? "-";
@@ -29,7 +38,10 @@ function WatchRow({ w, onRemove }) {
           <div>
             <div className="font-semibold text-lg">{title}</div>
             <div className="text-xs text-gray-500 mt-1">
-              {auction.item?.name || ""}
+              {auction.item?.category || ""} {auction.item?.condition ? `• ${auction.item.condition}` : ""}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              ID: {auctionId || 'No ID found'}
             </div>
           </div>
           <div className="text-xs text-gray-500 text-right">
@@ -43,23 +55,33 @@ function WatchRow({ w, onRemove }) {
 
         <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
           <div>
-            <div className="text-xs text-gray-500">Your Bid</div>
-            <div className="font-semibold text-blue-700">—</div>
+            <div className="text-xs text-gray-500">Starting Bid</div>
+            <div className="font-semibold text-gray-700">₹{auction.startingPrice ?? "-"}</div>
           </div>
           <div>
             <div className="text-xs text-gray-500">Current Bid</div>
             <div className="font-semibold text-green-600">₹{current}</div>
           </div>
           <div className="flex items-center justify-end gap-2">
-            <Link
-              to={`/auction/${auction._id || auction.id || w.auctionId}`}
-              className="px-3 py-2 bg-blue-600 text-white rounded text-sm"
-            >
-              View Auction
-            </Link>
+            {auctionId ? (
+              <Link
+                to={`/auction/${auctionId}`}
+                className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition"
+              >
+                View Auction
+              </Link>
+            ) : (
+              <button
+                disabled
+                className="px-3 py-2 bg-gray-400 text-white rounded text-sm cursor-not-allowed"
+              >
+                No ID
+              </button>
+            )}
             <button
-              onClick={() => onRemove(auction._id || auction.id || w.auctionId)}
-              className="px-3 py-2 bg-red-500 text-white rounded text-sm"
+              onClick={() => onRemove(auctionId)}
+              className="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition"
+              disabled={!auctionId}
             >
               Remove
             </button>
