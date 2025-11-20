@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useNavigate, useParams } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import {
@@ -110,7 +111,7 @@ export default function PayFees() {
     try {
       setVerifying(true);
       await verifyAuctionPayment(routeId, payment._id || payment.paymentId, { upiAccountName: payerName || user?.username || user?.fullname || '', upiTxnId: txnId });
-      alert('Verification requested — admin will verify shortly');
+      toast.info('Verification requested — admin will verify shortly');
       navigate(`/auction/${routeId}`);
     } catch (err) {
       console.error(err);
@@ -138,7 +139,7 @@ export default function PayFees() {
           clearInterval(id);
           setPollingId(null);
           // Notify user to submit delivery details on the Delivery page
-          alert('Payment confirmed by admin — please provide delivery details via the Delivery page in your dashboard.');
+          toast.success('Payment confirmed by admin — please provide delivery details via the Delivery page in your dashboard.');
         }
       } catch (err) {
         // ignore polling errors

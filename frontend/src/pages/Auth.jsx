@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 function OtpPage() {
   const [otp, setOtp] = useState("");
@@ -8,10 +9,10 @@ function OtpPage() {
   const handleVerify = (e) => {
     e.preventDefault();
     if (otp === "1234") {
-      alert("✅ OTP Verified Successfully!");
+      toast.success("✅ OTP Verified Successfully!");
       navigate("/login"); 
     } else {
-      alert("Invalid OTP! Please try again.");
+      toast.error("Invalid OTP! Please try again.");
     }
   };
 
@@ -46,7 +47,7 @@ function OtpPage() {
           <button
             type="button"
             className="text-blue-600 underline"
-            onClick={() => alert("OTP Resent!")}
+            onClick={() => toast.info("OTP Resent!")}
           >
             Resend OTP
           </button>

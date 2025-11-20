@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { resetPassword } from "../api";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function ResetPassword() {
   const [email, setEmail] = useState("");
@@ -22,23 +23,26 @@ export default function ResetPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !token || !newPassword || !confirmNewPassword) {
-      return alert("All fields are required");
+      toast.error("All fields are required");
+      return;
     }
     if (newPassword !== confirmNewPassword) {
-      return alert("Passwords do not match");
+      toast.error("Passwords do not match");
+      return;
     }
 
     if (newPassword.length < 8) {
-      return alert("Password must be at least 8 characters");
+      toast.error("Password must be at least 8 characters");
+      return;
     }
     setLoading(true);
     try {
       const res = await resetPassword({ token, email, newPassword: newPassword.trim(), confirmNewPassword: confirmNewPassword.trim() });
-      alert(res?.message || "Password reset successful");
+      toast.success(res?.message || "Password reset successful");
       navigate("/login");
     } catch (err) {
       const msg = err?.message || err?.msg || (typeof err === 'string' ? err : JSON.stringify(err));
-      alert(msg || "Password reset failed");
+      toast.error(msg || "Password reset failed");
     } finally {
       setLoading(false);
     }

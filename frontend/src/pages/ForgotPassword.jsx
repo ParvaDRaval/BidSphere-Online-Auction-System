@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { requestPasswordReset } from "../api";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -9,14 +10,14 @@ export default function ForgotPassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email) return alert("Enter your registered email");
+    if (!email) { toast.error("Enter your registered email"); return; }
     setLoading(true);
     try {
       const res = await requestPasswordReset({ email });
-      alert(res.message || "Reset link sent to your email");
+      toast.success(res.message || "Reset link sent to your email");
       navigate("/login");
     } catch (err) {
-      alert(err?.message || "Failed to send reset link");
+      toast.error(err?.message || "Failed to send reset link");
     } finally {
       setLoading(false);
     }

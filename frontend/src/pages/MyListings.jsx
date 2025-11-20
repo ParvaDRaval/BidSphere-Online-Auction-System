@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyAuctions, deleteAuction } from "../api";
+import { toast } from "react-toastify";
 
 function ListingRow({ a, onDelete, deleting }) {
   const title = a.title || a.item?.name || "Untitled";
@@ -66,7 +67,7 @@ export default function MyListings() {
       setAuctions((prev) => prev.filter((a) => a._id !== id));
     } catch (err) {
       console.error("deleteAuction error:", err);
-      alert(err?.message || "Failed to delete auction");
+      toast.error(err?.message || "Failed to delete auction");
     } finally {
       setDeletingId(null);
     }

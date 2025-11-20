@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAuction, saveAuctionDraft, updateAuction, deleteAuction, uploadImagesFormData } from "../api";
 
@@ -100,12 +101,16 @@ export default function EditAuctionDraftWithId() {
           auctionName: auction.title || "",
           itemName: auction.item?.name || "",
           itemDescription: auction.item?.description || "",
-          category: auction.item?.category || "",
-          condition: (auction.item?.condition || "like new").replace(/\s+/g, "-") || "like-new",
-          conditionNotes: auction.item?.metadata?.conditionNotes || "",
+          // prefer item.category, fall back to auction.category if present
+          category: auction.item?.category || auction.category || "",
+          // support condition stored either on item or auction; normalize spaces to hyphens
+          condition: (auction.item?.condition || auction.condition || "like new").replace(/\s+/g, "-") || "like-new",
+          conditionNotes: auction.item?.metadata?.conditionNotes || auction.metadata?.conditionNotes || "",
           startingBidPrice: auction.startingPrice != null ? String(auction.startingPrice) : "",
-          reservePrice: "",
-          bidIncrement: auction.minIncrement != null ? String(auction.minIncrement) : "",
+          // load previous reserve price if present
+          reservePrice: (auction.reservePrice != null ? String(auction.reservePrice) : (auction.reserve != null ? String(auction.reserve) : "")),
+          // fallback for increment naming differences
+          bidIncrement: auction.minIncrement != null ? String(auction.minIncrement) : (auction.bidIncrement != null ? String(auction.bidIncrement) : ""),
           startTiming: auction.startTime ? "schedule" : "immediate",
           scheduleStartDate: auction.startTime ? new Date(auction.startTime).toISOString().slice(0, 10) : "",
           scheduleStartTime: auction.startTime ? new Date(auction.startTime).toISOString().slice(11, 16) : "",
@@ -159,7 +164,7 @@ export default function EditAuctionDraftWithId() {
     const totalAllowed = 5;
     const remaining = totalAllowed - (existingImages.length - removedExistingIds.length) - newFiles.length;
     if (remaining <= 0) {
-      alert("Maximum 5 images allowed.");
+      toast.error("Maximum 5 images allowed.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -219,26 +224,26 @@ export default function EditAuctionDraftWithId() {
     setUpdating(true);
     setErrorMsg("");
     try {
-      if (!form.auctionName.trim()) return alert("Please enter auction name.");
-      if (!form.itemName.trim()) return alert("Please enter item name.");
-      if (!form.itemDescription.trim()) return alert("Please enter item description.");
-      if (!form.category) return alert("Please select a category.");
-      if (!form.startingBidPrice || Number(form.startingBidPrice) < 0) return alert("Please enter a valid starting bid price.");
-      if (!form.bidIncrement) return alert("Please enter a valid bid increment.");
+      if (!form.auctionName.trim()) { toast.error("Please enter auction name."); return; }
+      if (!form.itemName.trim()) { toast.error("Please enter item name."); return; }
+      if (!form.itemDescription.trim()) { toast.error("Please enter item description."); return; }
+      if (!form.category) { toast.error("Please select a category."); return; }
+      if (!form.startingBidPrice || Number(form.startingBidPrice) < 0) { toast.error("Please enter a valid starting bid price."); return; }
+      if (!form.bidIncrement) { toast.error("Please enter a valid bid increment."); return; }
 
       let startDt;
       if (form.startTiming === "immediate") {
         startDt = new Date();
       } else {
-        if (!form.scheduleStartDate || !form.scheduleStartTime) return alert("Please provide scheduled start date/time.");
+        if (!form.scheduleStartDate || !form.scheduleStartTime) { toast.error("Please provide scheduled start date/time."); return; }
         startDt = new Date(`${form.scheduleStartDate}T${form.scheduleStartTime}`);
-        if (isNaN(startDt.getTime())) return alert("Invalid scheduled start date/time.");
+        if (isNaN(startDt.getTime())) { toast.error("Invalid scheduled start date/time."); return; }
       }
 
-      if (!form.scheduleEndDate || !form.scheduleEndTime) return alert("Please provide end date & time.");
+      if (!form.scheduleEndDate || !form.scheduleEndTime) { toast.error("Please provide end date & time."); return; }
       const endDt = new Date(`${form.scheduleEndDate}T${form.scheduleEndTime}`);
-      if (isNaN(endDt.getTime())) return alert("Invalid end date/time.");
-      if (endDt <= startDt) return alert("End date/time must be after start date/time.");
+      if (isNaN(endDt.getTime())) { toast.error("Invalid end date/time."); return; }
+      if (endDt <= startDt) { toast.error("End date/time must be after start date/time."); return; }
 
       // Build payload matching backend field names
       const startISO = form.startTiming === "immediate" ? new Date().toISOString() : new Date(`${form.scheduleStartDate}T${form.scheduleStartTime}`).toISOString();
@@ -283,9 +288,11 @@ export default function EditAuctionDraftWithId() {
 
       await updateAuction(id, payload);
       setSuccessMsg("Auction updated successfully.");
+      toast.success("Auction updated successfully.");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
       setErrorMsg(String(err.message));
+      toast.error(err?.message || "Failed to update auction");
     } finally {
       setUpdating(false);
     }
@@ -298,9 +305,11 @@ export default function EditAuctionDraftWithId() {
     try {
       await deleteAuction(id);
       setSuccessMsg("Auction deleted.");
+      toast.success("Auction deleted.");
       setTimeout(() => navigate("/my-auctions"), 900);
     } catch (err) {
       setErrorMsg(String(err.message));
+      toast.error(err?.message || "Failed to delete auction");
     } finally {
       setDeleting(false);
     }
