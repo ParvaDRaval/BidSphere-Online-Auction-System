@@ -297,6 +297,55 @@ function AuctionDetails() {
     }
   };
 
+  // Share auction: use Web Share API when available, else copy link to clipboard or open mailto as fallback
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: auction?.title || 'Auction', url });
+        toast.success('Shared successfully');
+        return;
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast.success('Auction link copied to clipboard');
+        return;
+      }
+
+      // Fallback: open mail client with link
+      window.open(`mailto:?subject=${encodeURIComponent('Check out this auction')}&body=${encodeURIComponent(url)}`);
+      toast.info('Opened mail client to share link');
+    } catch (err) {
+      console.error('share error:', err);
+      toast.error('Failed to share the auction');
+    }
+  };
+
+  // Report auction: open mail client with a pre-filled report template
+  const handleReport = () => {
+    try {
+      const subject = `Report: ${auction?.title || auction?._id || 'Auction'}`;
+      const bodyLines = [
+        'I would like to report the following auction on BidSphere.',
+        '',
+        `Auction ID: ${auction?._id || ''}`,
+        `Title: ${auction?.title || ''}`,
+        `Seller: ${displaySellerName || ''}`,
+        `URL: ${window.location.href}`,
+        '',
+        'Reason (please describe):',
+        '\n',
+      ];
+      const mailto = `mailto:report@bidsphere.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+      window.location.href = mailto;
+      toast.info('Opening mail client to report the auction');
+    } catch (err) {
+      console.error('report mailto error:', err);
+      toast.error('Unable to open mail client for reporting');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -471,8 +520,8 @@ function AuctionDetails() {
                 </button>
 
                 <div className="flex gap-2 mt-2">
-                  <button className="flex-1 py-2 border rounded">Share</button>
-                  <button className="flex-1 py-2 border rounded">Report</button>
+                  <button onClick={handleShare} className="flex-1 py-2 border rounded">Share</button>
+                  <button onClick={handleReport} className="flex-1 py-2 border rounded">Report</button>
                 </div>
               </div>
 
