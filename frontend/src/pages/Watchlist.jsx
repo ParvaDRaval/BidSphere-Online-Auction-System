@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { Link, useNavigate } from "react-router-dom";
 import { getWatchlist, removeFromWatchlist, getCurrentUser } from "../api";
 
@@ -146,7 +147,7 @@ export default function Watchlist() {
       );
     } catch (err) {
       console.error("removeFromWatchlist error:", err);
-      alert(err?.message || "Failed to remove watchlist item");
+      toast.error(err?.message || "Failed to remove watchlist item");
     }
   }
 

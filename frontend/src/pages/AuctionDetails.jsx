@@ -204,7 +204,7 @@ function AuctionDetails() {
   const handlePlaceBid = async () => {
     const val = Number(bidAmount);
     if (!val || isNaN(val) || val <= 0) {
-      alert("Please enter a valid bid amount");
+      toast.error("Please enter a valid bid amount");
       return;
     }
 
@@ -213,7 +213,7 @@ function AuctionDetails() {
     const minRequired = Number(currentPrice) + minInc;
     
     if (val < minRequired) {
-      alert(`Your bid must be at least ₹${minRequired} (current: ₹${currentPrice} + min increment: ₹${minInc})`);
+      toast.error(`Your bid must be at least ₹${minRequired} (current: ₹${currentPrice} + min increment: ₹${minInc})`);
       return;
     }
 
@@ -224,10 +224,10 @@ function AuctionDetails() {
       setAuction(res?.auction || res || auction);
       setTopBids(res?.topBids || []);
       setBidAmount("");
-      alert("Bid placed successfully!");
+      toast.success("Bid placed successfully!");
     } catch (err) {
       console.error("placeBid error:", err);
-      alert(err?.message || "Failed to place bid");
+      toast.error(err?.message || "Failed to place bid");
     } finally {
       setPlacingBid(false);
     }
@@ -237,7 +237,7 @@ function AuctionDetails() {
   const handleSetupAutoBid = async () => {
     const val = Number(autoBidAmount);
     if (!val || isNaN(val) || val <= 0) {
-      alert("Please enter a valid maximum bid amount");
+      toast.error("Please enter a valid maximum bid amount");
       return;
     }
 
@@ -246,7 +246,7 @@ function AuctionDetails() {
     const minRequired = Number(currentPrice) + minInc;
     
     if (val < minRequired) {
-      alert(`Your maximum bid must be at least ₹${minRequired}`);
+      toast.error(`Your maximum bid must be at least ₹${minRequired}`);
       return;
     }
 
@@ -254,17 +254,17 @@ function AuctionDetails() {
       setAutoBidLoading(true);
       if (autoBidData?._id) {
         await editAutoBid(auction._id, autoBidData._id, val);
-        alert("Auto-bid limit updated!");
+        toast.success("Auto-bid limit updated!");
         setAutoBidData({ ...autoBidData, maxLimit: val });
       } else {
         const result = await setAutoBid(auction._id, val);
         setAutoBidData(result);
-        alert("Auto-bid created successfully!");
+        toast.success("Auto-bid created successfully!");
       }
       setShowAutoBidModal(false);
     } catch (err) {
       console.error("handleSetupAutoBid error:", err);
-      alert(err?.message || "Failed to set up auto-bid");
+      toast.error(err?.message || "Failed to set up auto-bid");
     } finally {
       setAutoBidLoading(false);
     }
@@ -282,18 +282,67 @@ function AuctionDetails() {
       if (enabled) {
         await activateAutoBid(auction._id, autoBidData._id);
         setAutoBidEnabled(true);
-        alert("Auto-bid activated!");
+        toast.success("Auto-bid activated!");
       } else {
         await deactivateAutoBid(auction._id, autoBidData._id);
         setAutoBidEnabled(false);
-        alert("Auto-bid deactivated");
+        toast.success("Auto-bid deactivated");
       }
     } catch (err) {
       console.error("handleToggleAutoBid error:", err);
-      alert(err?.message || "Failed to toggle auto-bid");
+      toast.error(err?.message || "Failed to toggle auto-bid");
       setAutoBidEnabled(!enabled);
     } finally {
       setAutoBidLoading(false);
+    }
+  };
+
+  // Share auction: use Web Share API when available, else copy link to clipboard or open mailto as fallback
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: auction?.title || 'Auction', url });
+        toast.success('Shared successfully');
+        return;
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast.success('Auction link copied to clipboard');
+        return;
+      }
+
+      // Fallback: open mail client with link
+      window.open(`mailto:?subject=${encodeURIComponent('Check out this auction')}&body=${encodeURIComponent(url)}`);
+      toast.info('Opened mail client to share link');
+    } catch (err) {
+      console.error('share error:', err);
+      toast.error('Failed to share the auction');
+    }
+  };
+
+  // Report auction: open mail client with a pre-filled report template
+  const handleReport = () => {
+    try {
+      const subject = `Report: ${auction?.title || auction?._id || 'Auction'}`;
+      const bodyLines = [
+        'I would like to report the following auction on BidSphere.',
+        '',
+        `Auction ID: ${auction?._id || ''}`,
+        `Title: ${auction?.title || ''}`,
+        `Seller: ${displaySellerName || ''}`,
+        `URL: ${window.location.href}`,
+        '',
+        'Reason (please describe):',
+        '\n',
+      ];
+      const mailto = `mailto:report@bidsphere.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+      window.location.href = mailto;
+      toast.info('Opening mail client to report the auction');
+    } catch (err) {
+      console.error('report mailto error:', err);
+      toast.error('Unable to open mail client for reporting');
     }
   };
 
@@ -471,8 +520,8 @@ function AuctionDetails() {
                 </button>
 
                 <div className="flex gap-2 mt-2">
-                  <button className="flex-1 py-2 border rounded">Share</button>
-                  <button className="flex-1 py-2 border rounded">Report</button>
+                  <button onClick={handleShare} className="flex-1 py-2 border rounded">Share</button>
+                  <button onClick={handleReport} className="flex-1 py-2 border rounded">Report</button>
                 </div>
               </div>
 

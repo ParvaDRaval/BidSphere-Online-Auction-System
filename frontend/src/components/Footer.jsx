@@ -12,10 +12,10 @@ export default function Footer() {
         <div>
           <h4 className="font-semibold mb-2">For Bidders</h4>
           <ul className="text-sm text-gray-600 space-y-2">
-            <li><Link to="/" className="hover:underline">Discover Auctions</Link></li>
-            <li><Link to="/" className="hover:underline">Live & Upcoming</Link></li>
-            <li><Link to="/" className="hover:underline">Watchlist Items</Link></li>
-            <li><Link to="/" className="hover:underline">Bid Activity</Link></li>
+            <li><Link to="/auctions" className="hover:underline">Discover Auctions</Link></li>
+            <li><Link to="/auctions" className="hover:underline">Live & Upcoming</Link></li>
+            <li><Link to="/watchlist" className="hover:underline">Watchlist Items</Link></li>
+            <li><Link to="/my-bids" className="hover:underline">Bid Activity</Link></li>
           </ul>
         </div>
 

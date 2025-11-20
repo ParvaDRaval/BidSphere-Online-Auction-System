@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createAuction, uploadImagesFormData } from "../api";
+import { toast } from "react-toastify";
 import CATEGORIES from "../constants/categories";
 
 function FeeStructure() {
@@ -153,7 +154,7 @@ export default function CreateAuction() {
     const totalAllowed = 5;
     const remaining = totalAllowed - images.length;
     if (remaining <= 0) {
-      alert("Maximum 5 images allowed.");
+      toast.error("Maximum 5 images allowed.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -211,26 +212,26 @@ export default function CreateAuction() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    if (!form.auctionName.trim()) return alert("Please enter auction name.");
-    if (!form.itemName.trim()) return alert("Please enter item name.");
-    if (!form.itemDescription.trim()) return alert("Please enter item description.");
-    if (!form.category) return alert("Please select a category.");
-    if (!form.startingBidPrice || Number(form.startingBidPrice) < 0) return alert("Please enter a valid starting bid price.");
-    if (!form.bidIncrement) return alert("Please enter a valid bid increment.");
+    if (!form.auctionName.trim()) { toast.error("Please enter auction name."); return; }
+    if (!form.itemName.trim()) { toast.error("Please enter item name."); return; }
+    if (!form.itemDescription.trim()) { toast.error("Please enter item description."); return; }
+    if (!form.category) { toast.error("Please select a category."); return; }
+    if (!form.startingBidPrice || Number(form.startingBidPrice) < 0) { toast.error("Please enter a valid starting bid price."); return; }
+    if (!form.bidIncrement) { toast.error("Please enter a valid bid increment."); return; }
 
     let startDt;
     if (form.startTiming === "immediate") {
       startDt = new Date();
     } else {
-      if (!form.scheduleStartDate || !form.scheduleStartTime) return alert("Please provide scheduled start date/time.");
+      if (!form.scheduleStartDate || !form.scheduleStartTime) { toast.error("Please provide scheduled start date/time."); return; }
       startDt = new Date(`${form.scheduleStartDate}T${form.scheduleStartTime}`);
-      if (isNaN(startDt.getTime())) return alert("Invalid scheduled start date/time.");
+      if (isNaN(startDt.getTime())) { toast.error("Invalid scheduled start date/time."); return; }
     }
 
-    if (!form.scheduleEndDate || !form.scheduleEndTime) return alert("Please provide end date & time.");
+    if (!form.scheduleEndDate || !form.scheduleEndTime) { toast.error("Please provide end date & time."); return; }
     const endDt = new Date(`${form.scheduleEndDate}T${form.scheduleEndTime}`);
-    if (isNaN(endDt.getTime())) return alert("Invalid end date/time.");
-    if (endDt <= startDt) return alert("End date/time must be after start date/time.");
+    if (isNaN(endDt.getTime())) { toast.error("Invalid end date/time."); return; }
+    if (endDt <= startDt) { toast.error("End date/time must be after start date/time."); return; }
 
     const apiPayload = {
       title: form.auctionName,
@@ -268,7 +269,7 @@ export default function CreateAuction() {
     } catch (err) {
       setSubmitting(false);
       console.error("createAuction error:", err);
-      alert(err?.message || String(err) || "Failed to create auction");
+      toast.error(err?.message || String(err) || "Failed to create auction");
     }
   }
 

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { verifyEmail } from "../api";
+import { toast } from "react-toastify";
 
 export default function VerifyEmail() {
   const location = useLocation();
@@ -13,23 +14,23 @@ export default function VerifyEmail() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !code) {
-      alert("Please provide both email and OTP code");
+      toast.error("Please provide both email and OTP code");
       return;
     }
     setLoading(true);
     try {
       const res = await verifyEmail({ email, code });
-      alert(res.message || "Email verified successfully");
+      toast.success(res.message || "Email verified successfully");
       navigate("/login");
     } catch (err) {
-      alert(err.message || "Verification failed");
+      toast.error(err.message || "Verification failed");
     } finally {
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
-    alert("Check your inbox/spam for the OTP. If you still didn't receive it, try registering again or contact support.");
+    toast.info("Check your inbox/spam for the OTP. If you still didn't receive it, try registering again or contact support.");
   };
 
   return (

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import loginImg from "../assets/login.jpg";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser, getCurrentUser } from "../api"; 
+import { toast } from "react-toastify";
 
 function Login() {
   const [form, setForm] = useState({
@@ -24,18 +25,18 @@ function Login() {
     e.preventDefault();
 
     if (!form.email || !form.password) {
-      alert("Please fill in all fields.");
+      toast.error("Please fill in all fields.");
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email)) {
-      alert("Please enter a valid email address.");
+      toast.error("Please enter a valid email address.");
       return;
     }
 
     if (form.password.length < 8) {
-      alert("Password must be at least 8 characters long.");
+      toast.error("Password must be at least 8 characters long.");
       return;
     }
 
@@ -57,11 +58,11 @@ function Login() {
         // ignore - fallback to earlier stored user
       }
 
-      alert(res.message || "Logged in successfully");
+      toast.success(res.message || "Logged in successfully");
 
       navigate("/");
     } catch (err) {
-      alert(err.message || "Login failed");
+      toast.error(err.message || "Login failed");
     } finally {
       setForm({ email: "", password: "", remember: false });
     }

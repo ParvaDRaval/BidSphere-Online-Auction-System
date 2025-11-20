@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { createDelivery, getCurrentUser, getAuction } from '../api';
 
@@ -67,7 +68,7 @@ export default function DeliveryCreate() {
       };
       const res = await createDelivery(payload);
       if (res && (res.success || res.delivery)) {
-        alert(res.message || 'Delivery saved');
+        toast.success(res.message || 'Delivery saved');
         navigate('/buyer-dashboard');
       } else {
         setError(res?.message || 'Failed to save');

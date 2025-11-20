@@ -144,7 +144,7 @@ function Navbar() {
         </button>
       </div>
 
-      <ul className="flex space-x-6 font-medium">
+      <ul className="flex items-center space-x-6 font-medium">
         <li><Link to="/categories">Categories</Link></li>
         <li><Link to='/create-auction'>Create Auction</Link></li>
 
@@ -159,8 +159,8 @@ function Navbar() {
           </>
         )}
 
-        {user && (
-          <li className="relative" ref={menuRef}>
+        {user && !admin && (
+            <li className="relative" ref={menuRef}>
             <button
               onClick={() => setShowMenu((s) => !s)}
               className="flex items-center gap-2 bg-white px-3 py-1 rounded-md hover:shadow"
