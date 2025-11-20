@@ -138,8 +138,7 @@ export default function PayFees() {
         if (latest && (latest.status || '').toUpperCase() === 'SUCCESS') {
           clearInterval(id);
           setPollingId(null);
-          // Notify user to submit delivery details on the Delivery page
-          toast.success('Payment confirmed by admin — please provide delivery details via the Delivery page in your dashboard.');
+          toast.success('Payment confirmed by admin — please provide delivery details from your dashboard.');
         }
       } catch (err) {
         // ignore polling errors
@@ -231,7 +230,7 @@ export default function PayFees() {
                 <div className="mt-4 text-sm text-gray-700">Your COD payment has been recorded. The admin will confirm and update the order.</div>
               )}
 
-              <div className="mt-3 text-sm text-gray-600">After admin confirmation, please provide delivery details from your Dashboard &gt; Delivery page.</div>
+              <div className="mt-3 text-sm text-gray-600">After admin confirmation, please provide delivery details from your Buyer Dashboard.</div>
             </div>
           )}
         </>

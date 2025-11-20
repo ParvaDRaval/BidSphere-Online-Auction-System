@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getCurrentUser, getWatchlist, getBiddingHistory, getMyDeliveries, getMyPayments } from "../api";
+import { getCurrentUser, getWatchlist, getBiddingHistory, getMyDeliveries, getMyPayments, createDelivery } from "../api";
 /* eslint-disable react/prop-types */
 
 function StatCard({ title, value, small }) {
@@ -87,6 +87,7 @@ export default function UserDashboardBuyer() {
           // build a set of auction ids that have deliveries
           const set = new Set((deliveries || []).map(d => String(d.auctionId?._id || d.auctionId)));
           setDeliveriesSet(set);
+          setAllDeliveries(deliveries || []);
         }
         if (payRes.status === "fulfilled") {
           const payments = payRes.value?.payments || payRes.value || [];
@@ -106,6 +107,21 @@ export default function UserDashboardBuyer() {
 
   const [deliveriesSet, setDeliveriesSet] = useState(new Set());
   const [paymentsSuccessSet, setPaymentsSuccessSet] = useState(new Set());
+  const [allDeliveries, setAllDeliveries] = useState([]);
+
+  // Delivery form states
+  const [showDeliveryForm, setShowDeliveryForm] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [selectedAuctionId, setSelectedAuctionId] = useState(null);
+  const [deliveryName, setDeliveryName] = useState('');
+  const [deliveryPhone, setDeliveryPhone] = useState('');
+  const [deliveryStreet, setDeliveryStreet] = useState('');
+  const [deliveryCity, setDeliveryCity] = useState('');
+  const [deliveryState, setDeliveryState] = useState('');
+  const [deliveryPostalCode, setDeliveryPostalCode] = useState('');
+  const [deliveryCountry, setDeliveryCountry] = useState('');
+  const [savingDelivery, setSavingDelivery] = useState(false);
+  const [deliveryError, setDeliveryError] = useState(null);
 
   const displayName =
     (user && (user.username || user.name || user.email)) || "First Last";
@@ -115,6 +131,97 @@ export default function UserDashboardBuyer() {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  function openDeliveryForm(auctionId) {
+    setSelectedAuctionId(auctionId);
+    
+    // Check if user already has a delivery address saved
+    const existingDelivery = allDeliveries.find(d => d.buyerId?._id === user?._id || d.buyerId === user?._id);
+    
+    if (existingDelivery?.buyerAddress) {
+      // Show confirmation dialog with existing address
+      setDeliveryStreet(existingDelivery.buyerAddress.street || '');
+      setDeliveryCity(existingDelivery.buyerAddress.city || '');
+      setDeliveryState(existingDelivery.buyerAddress.state || '');
+      setDeliveryPostalCode(existingDelivery.buyerAddress.postalCode || '');
+      setDeliveryCountry(existingDelivery.buyerAddress.country || '');
+      setDeliveryName(existingDelivery.buyerAddress.name || user?.fullname || user?.username || '');
+      setDeliveryPhone(existingDelivery.buyerAddress.phone || user?.phone || '');
+      setShowConfirmDialog(true);
+    } else {
+      // Show form to enter new address
+      if (user?.address) {
+        setDeliveryStreet(user.address.street || '');
+        setDeliveryCity(user.address.city || '');
+        setDeliveryState(user.address.state || '');
+        setDeliveryPostalCode(user.address.postalCode || '');
+        setDeliveryCountry(user.address.country || '');
+        setDeliveryName(user.fullname || user.username || '');
+      }
+      if (user?.phone) setDeliveryPhone(user.phone);
+      setShowDeliveryForm(true);
+    }
+    setDeliveryError(null);
+  }
+
+  function confirmExistingAddress() {
+    // Use the existing address without re-entering
+    submitDeliveryWithAddress();
+  }
+
+  function editAddress() {
+    setShowConfirmDialog(false);
+    setShowDeliveryForm(true);
+  }
+
+  async function submitDeliveryWithAddress() {
+    setDeliveryError(null);
+    if (!deliveryName || !deliveryStreet || !deliveryCity || !deliveryState || !deliveryPostalCode || !deliveryCountry) {
+      return setDeliveryError('Please fill all address fields');
+    }
+    try {
+      setSavingDelivery(true);
+      const payload = {
+        auctionId: selectedAuctionId,
+        buyerAddress: {
+          name: deliveryName,
+          phone: deliveryPhone,
+          street: deliveryStreet,
+          city: deliveryCity,
+          state: deliveryState,
+          postalCode: deliveryPostalCode,
+          country: deliveryCountry
+        }
+      };
+      const res = await createDelivery(payload);
+      if (res && (res.success || res.delivery)) {
+        // Refresh deliveries list
+        const delRes = await getMyDeliveries().catch(() => null);
+        if (delRes?.deliveries) {
+          const set = new Set((delRes.deliveries || []).map(d => String(d.auctionId?._id || d.auctionId)));
+          setDeliveriesSet(set);
+          setAllDeliveries(delRes.deliveries || []);
+        }
+        setShowDeliveryForm(false);
+        setShowConfirmDialog(false);
+        // Reset form
+        setDeliveryName('');
+        setDeliveryPhone('');
+        setDeliveryStreet('');
+        setDeliveryCity('');
+        setDeliveryState('');
+        setDeliveryPostalCode('');
+        setDeliveryCountry('');
+      } else {
+        setDeliveryError(res?.message || 'Failed to save');
+      }
+    } catch (err) {
+      console.error(err);
+      setDeliveryError(err?.message || 'Failed to save');
+    } finally {
+      setSavingDelivery(false);
+    }
+  }
 
   const activeBids = 0;
   const totalSpending = 0;
@@ -355,6 +462,151 @@ export default function UserDashboardBuyer() {
               )}
             </div>
           </div>
+
+          <div className="bg-white border rounded-lg p-6">
+            <h2 className="text-lg font-semibold mb-4">Deliveries</h2>
+            <div className="space-y-3">
+              {loadingLists ? (
+                <div className="text-sm text-gray-500">Loading...</div>
+              ) : (
+                  (biddingHistory || [])
+                  .filter((b) => b.youWon)
+                  .filter((b) => (b.auctionId?.status || '').toUpperCase() === 'ENDED')
+                  .filter((b) => {
+                    const aid = String(b.auctionId?._id || b._id || '');
+                    return paymentsSuccessSet.has(aid);
+                  })
+                  .map((b, idx) => {
+                    const aid = String(b.auctionId?._id || b._id || '');
+                    const hasDelivery = deliveriesSet.has(aid);
+                    return (
+                      <div key={b._id || b.auctionId?._id || idx} className="bg-gray-50 p-3 rounded border flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{b.auctionId?.title || b.title || 'Auction'}</div>
+                          <div className="text-xs text-gray-500">Final: {b.final ? `₹${b.final}` : b.amount ? `₹${b.amount}` : b.current ? `₹${b.current}` : '-'}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {hasDelivery ? (
+                            <span className="px-3 py-2 bg-green-100 text-green-800 rounded text-sm">Delivery Saved</span>
+                          ) : (
+                            <button onClick={() => openDeliveryForm(aid)} className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">Add Delivery Address</button>
+                          )}
+                          <Link to={`/auction/${b.auctionId?._id || b._id}`} className="text-sm text-blue-600">View</Link>
+                        </div>
+                      </div>
+                    )
+                  })
+              )}
+            </div>
+          </div>
+
+          {showConfirmDialog && (
+            <div className="bg-white border rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4">Confirm Delivery Address</h2>
+              <p className="text-gray-600 mb-4">Is this the address where you want the delivery?</p>
+              <div className="bg-gray-50 p-4 rounded mb-4 space-y-2">
+                <div><strong>Name:</strong> {deliveryName}</div>
+                <div><strong>Phone:</strong> {deliveryPhone}</div>
+                <div><strong>Street:</strong> {deliveryStreet}</div>
+                <div><strong>City:</strong> {deliveryCity}</div>
+                <div><strong>State:</strong> {deliveryState}</div>
+                <div><strong>Postal Code:</strong> {deliveryPostalCode}</div>
+                <div><strong>Country:</strong> {deliveryCountry}</div>
+              </div>
+              {deliveryError && <div className="text-red-600 mb-3">{deliveryError}</div>}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={confirmExistingAddress}
+                  disabled={savingDelivery}
+                  className={`px-4 py-2 rounded text-white ${savingDelivery ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                >
+                  {savingDelivery ? 'Confirming...' : 'Yes, Confirm'}
+                </button>
+                <button
+                  onClick={editAddress}
+                  className="px-4 py-2 rounded border text-gray-700 hover:bg-gray-50"
+                >
+                  No, Edit Address
+                </button>
+                <button
+                  onClick={() => setShowConfirmDialog(false)}
+                  className="px-4 py-2 rounded border text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showDeliveryForm && (
+            <div className="bg-white border rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4">Add Delivery Address</h2>
+              {deliveryError && <div className="text-red-600 mb-3">{deliveryError}</div>}
+              <form onSubmit={(e) => { e.preventDefault(); submitDeliveryWithAddress(); }} className="space-y-3">
+                <input
+                  value={deliveryName}
+                  onChange={(e) => setDeliveryName(e.target.value)}
+                  placeholder="Full name"
+                  className="w-full p-2 border rounded"
+                />
+                <input
+                  value={deliveryPhone}
+                  onChange={(e) => setDeliveryPhone(e.target.value)}
+                  placeholder="Phone"
+                  className="w-full p-2 border rounded"
+                />
+                <input
+                  value={deliveryStreet}
+                  onChange={(e) => setDeliveryStreet(e.target.value)}
+                  placeholder="Street address"
+                  className="w-full p-2 border rounded"
+                />
+                <input
+                  value={deliveryCity}
+                  onChange={(e) => setDeliveryCity(e.target.value)}
+                  placeholder="City"
+                  className="w-full p-2 border rounded"
+                />
+                <input
+                  value={deliveryState}
+                  onChange={(e) => setDeliveryState(e.target.value)}
+                  placeholder="State"
+                  className="w-full p-2 border rounded"
+                />
+                <input
+                  value={deliveryPostalCode}
+                  onChange={(e) => setDeliveryPostalCode(e.target.value)}
+                  placeholder="Postal code"
+                  className="w-full p-2 border rounded"
+                />
+                <input
+                  value={deliveryCountry}
+                  onChange={(e) => setDeliveryCountry(e.target.value)}
+                  placeholder="Country"
+                  className="w-full p-2 border rounded"
+                />
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="submit"
+                    disabled={savingDelivery}
+                    className={`px-4 py-2 rounded text-white ${savingDelivery ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  >
+                    {savingDelivery ? 'Saving...' : 'Save Delivery Address'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeliveryForm(false);
+                      setShowConfirmDialog(false);
+                    }}
+                    className="px-4 py-2 rounded border text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
           <div className="bg-white border rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4">Trending Auctions</h2>
