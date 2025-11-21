@@ -8,12 +8,12 @@ const ratingSchema = new mongoose.Schema({
     },
     sellerId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'user',
+        ref: 'User',
         required: true
     },
     raterId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'user',
+        ref: 'User',
         required: true
     },
     rating: {
@@ -28,9 +28,6 @@ const ratingSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// user can rate seller once per auction
 ratingSchema.index({ auctionId: 1, raterId: 1 }, { unique: true });
 
-const Rating = mongoose.model('Rating', ratingSchema);
-
-export default Rating;
+export default mongoose.model("Rating", ratingSchema);
