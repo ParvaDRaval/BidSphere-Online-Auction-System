@@ -2,96 +2,71 @@ import Rating from '../models/Rating.js';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
 
+/* POST /bidsphere/ratings */
 export const rateSeller = async (req, res) => {
     try {
         const { auctionId, sellerId, raterId, rating, review } = req.body;
 
         if (!auctionId || !sellerId || !raterId || !rating) {
-            return res.status(400).json({ 
-                success: false,
-                message: 'Missing required fields' 
-            });
+            return res.status(400).json({ success: false, message: "Missing required fields" });
         }
 
-        if (isNaN(rating) || rating < 1 || rating > 5) {
-            return res.status(400).json({ 
-                success: false,
-                message: 'Rating must be a number between 1 and 5' 
-            });
+        if (rating < 1 || rating > 5) {
+            return res.status(400).json({ success: false, message: "Rating must be between 1 and 5" });
         }
 
-        const existingRating = await Rating.findOne({ 
-            auctionId, 
-            raterId 
-        });
-
+        const existingRating = await Rating.findOne({ auctionId, raterId });
         if (existingRating) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 success: false,
-                message: 'You have already rated this seller for this auction' 
+                message: 'You have already rated this seller for this auction'
             });
         }
 
-        const newRating = new Rating({
+        const newRating = await Rating.create({
             auctionId,
             sellerId,
             raterId,
-            rating: Number(rating),
-            review: review || ''
+            rating,
+            review: review || ""
         });
 
-        await newRating.save();
+        const agg = await Rating.aggregate([
+            { $match: { sellerId: new mongoose.Types.ObjectId(sellerId) } },
+            { $group: { _id: null, avg: { $avg: "$rating" }, count: { $sum: 1 } } }
+        ]);
 
-        const seller = await User.findById(sellerId);
-        if (!seller) {
-            return res.status(404).json({ 
-                success: false,
-                message: 'Seller not found' 
-            });
-        }
-
-        const allRatings = await Rating.find({ sellerId });
-        const totalRatings = allRatings.length;
-        const sumRatings = allRatings.reduce((sum, r) => sum + r.rating, 0);
-        const averageRating = totalRatings > 0 ? sumRatings / totalRatings : 0;
-
-        seller.sellerRating = {
-            average: parseFloat(averageRating.toFixed(2)),
-            count: totalRatings
-        };
-
-        await seller.save();
+        await User.findByIdAndUpdate(sellerId, {
+            sellerRating: {
+                average: agg[0]?.avg ? Number(agg[0].avg.toFixed(2)) : 0,
+                count: agg[0]?.count || 0
+            }
+        });
 
         return res.status(201).json({
             success: true,
-            message: 'Rating submitted successfully',
+            message: "Rating submitted successfully",
             rating: newRating
         });
 
     } catch (error) {
-        console.error('Error in rateSeller:', error);
-        return res.status(500).json({ 
-            success: false,
-            message: 'Internal server error',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+        console.error("Error in rateSeller:", error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
+/* GET /bidsphere/ratings/seller/:sellerId */
 export const getSellerRatings = async (req, res) => {
     try {
         const { sellerId } = req.params;
 
-        if (!mongoose.Types.ObjectId.isValid(sellerId)) {
-            return res.status(400).json({ 
-                success: false,
-                message: 'Invalid seller ID' 
-            });
-        }
+        const query = mongoose.Types.ObjectId.isValid(sellerId)
+            ? { sellerId: new mongoose.Types.ObjectId(sellerId) }
+            : { sellerId };
 
-        const ratings = await Rating.find({ sellerId })
-            .populate('raterId', 'username profilePhoto')
-            .populate('auctionId', 'title')
+        const ratings = await Rating.find(query)
+            .populate("raterId", "username profilePhoto")
+            .populate("auctionId", "title")
             .sort({ createdAt: -1 })
             .lean();
 
@@ -101,11 +76,10 @@ export const getSellerRatings = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error in getSellerRatings:', error);
-        return res.status(500).json({ 
+        console.error("Error in getSellerRatings:", error);
+        return res.status(500).json({
             success: false,
-            message: 'Error fetching ratings',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: "Error fetching ratings"
         });
     }
 };
