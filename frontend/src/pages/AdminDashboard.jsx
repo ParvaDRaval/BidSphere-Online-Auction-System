@@ -8,6 +8,7 @@ import {
   getAdminNotifications,
   confirmAdminNotification,
   rejectAdminNotification,
+  getAllDeliveries,
 } from "../api";
 
 function AdminDashboard() {
@@ -21,6 +22,10 @@ function AdminDashboard() {
   const [removingId, setRemovingId] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [deliveries, setDeliveries] = useState([]);
+  const [deliverLoading, setDeliverLoading] = useState(false);
+  const [deliverError, setDeliverError] = useState(null);
+  const [showDeliveries, setShowDeliveries] = useState(false);
   // store the processing payment id (not notification id) to avoid duplicate actions for same payment
   const [notifProcessingPaymentId, setNotifProcessingPaymentId] = useState(null);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -253,12 +258,34 @@ function AdminDashboard() {
             </select>
           </div>
           <div>
-            <button
-              onClick={() => setShowNotifs(true)}
-              className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
-            >
-              Payment Verifications ({notifications.length})
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowNotifs(true)}
+                className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+              >
+                Payment Verifications ({notifications.length})
+              </button>
+              <button
+                onClick={async () => {
+                  setShowDeliveries(true);
+                  // load deliveries when opening
+                  try {
+                    setDeliverLoading(true);
+                    setDeliverError(null);
+                    const res = await getAllDeliveries();
+                    setDeliveries(res?.deliveries || []);
+                  } catch (err) {
+                    console.error('load deliveries error:', err);
+                    setDeliverError(err?.message || 'Failed to load deliveries');
+                  } finally {
+                    setDeliverLoading(false);
+                  }
+                }}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              >
+                Deliveries
+              </button>
+            </div>
           </div>
         </div>
 
@@ -452,6 +479,83 @@ function AdminDashboard() {
                           >
                             {notifProcessingPaymentId === (n.payment?._id || n.paymentId || n._id) ? 'Processing...' : 'Reject'}
                           </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {showDeliveries && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" onClick={() => setShowDeliveries(false)}>
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">Deliveries</h2>
+                <button onClick={() => setShowDeliveries(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+              </div>
+
+              {deliverLoading ? (
+                <div className="text-center py-8">Loading deliveries...</div>
+              ) : deliverError ? (
+                <div className="text-center py-8 text-red-600">{deliverError}</div>
+              ) : deliveries.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No deliveries found.</div>
+              ) : (
+                <div className="space-y-4">
+                  {deliveries.map((d) => (
+                    <div key={d._id} className="border rounded p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-sm text-gray-600">Auction</div>
+                          <div className="font-semibold">{d.auctionId?.title || d.auctionId?._id || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">{d.auctionId?.item?.name || ''}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Seller</div>
+                          <div className="font-semibold">{d.sellerId?.username || d.sellerId?.email || d.sellerId?._id || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">{d.sellerId?.email || ''}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Buyer (Winner)</div>
+                          <div className="font-semibold">{d.buyerId?.username || d.buyerId?.email || d.buyerId?._id || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">{d.buyerId?.email || ''}</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-sm text-gray-600">Buyer Address</div>
+                          <div className="text-sm text-gray-900">
+                            {d.buyerAddress ? (
+                              <div>
+                                <div>{d.buyerAddress.name}</div>
+                                <div>{d.buyerAddress.street}, {d.buyerAddress.city}</div>
+                                <div>{d.buyerAddress.state} - {d.buyerAddress.postalCode}</div>
+                                <div>{d.buyerAddress.country}</div>
+                              </div>
+                            ) : <div className="text-gray-500">Not provided</div>}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Seller Address</div>
+                          <div className="text-sm text-gray-900">
+                            {d.sellerAddress ? (
+                              <div>
+                                <div>{d.sellerAddress.street}, {d.sellerAddress.city}</div>
+                                <div>{d.sellerAddress.state} - {d.sellerAddress.postalCode}</div>
+                                <div>{d.sellerAddress.country}</div>
+                              </div>
+                            ) : <div className="text-gray-500">Not provided</div>}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Status</div>
+                          <div className="text-sm text-gray-900">Payment: {d.paymentStatus || 'N/A'}</div>
+                          <div className="text-sm text-gray-900">Delivery: {d.deliveryStatus || 'N/A'}</div>
                         </div>
                       </div>
                     </div>
