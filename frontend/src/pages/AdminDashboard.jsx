@@ -315,13 +315,17 @@ function AdminDashboard() {
                           Bids
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
+                          <span className="sr-only">Actions</span>
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {auctions.map((auction) => (
-                        <tr key={auction._id} className="group hover:bg-gray-50">
+                        <tr
+                          key={auction._id}
+                          className="group hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleViewDetails(auction._id)}
+                        >
                           <td className="px-4 py-2 whitespace-nowrap">
                             <div className="flex items-center">
                               {auction.item?.images?.[0] ? (
@@ -393,16 +397,7 @@ function AdminDashboard() {
                             )}
                           </td>
                           <td className="px-4 py-2 whitespace-nowrap text-sm">
-                            <div className="flex items-center justify-end">
-                              <div className="transform translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200">
-                                <button
-                                  onClick={() => handleViewDetails(auction._id)}
-                                  className="px-3 py-1 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-700"
-                                >
-                                  View
-                                </button>
-                              </div>
-                            </div>
+                            {/* Row click opens details modal; no separate View button */}
                           </td>
                         </tr>
                       ))}
