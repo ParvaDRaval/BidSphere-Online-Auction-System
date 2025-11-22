@@ -73,9 +73,13 @@ import { restrictAdminIP } from "./middleware/adminMiddleware.js";
 // home page
 app.get ("/", restrictToLoggedinUserOnly, (req, res) => res.send("BidSphere Online Auction System") );
 
-// User Route
+// Auth Route
 import authRoutes from "./routes/authRoutes.js";
-app.use("/bidsphere/user", authRoutes);
+app.use("/bidsphere/auth", authRoutes);
+
+// User Route
+import userRoutes from "./routes/userRoutes.js";
+app.use("/bidsphere/user", userRoutes);
 
 // Admin Route
 import adminRoutes from "./routes/adminRoutes.js";
@@ -91,7 +95,6 @@ app.use("/BidSphere/auctions/:auctionId/bid", bidRoutes);
 // Auction Route
 import auctionRoutes from "./routes/auctionRoutes.js";
 app.use("/bidsphere/auctions", auctionRoutes);
-
 
 // Payment Routes
 import paymentRoutes from "./routes/paymentRoutes.js";

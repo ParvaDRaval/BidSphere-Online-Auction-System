@@ -12,7 +12,7 @@ import mongoose from "mongoose";
 export async function getBiddingHistory(req, res) {
   try {
     const userId = req.user?._id;
-    if (!userId) return res.status(401).json({ message: "Unauthorized", history: [], total: 0 });
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     const page = Math.max(1, parseInt(req.query.page || "1", 10));
     const limit = Math.max(1, Math.min(100, parseInt(req.query.limit || "10", 10)));
@@ -68,8 +68,8 @@ export async function getBiddingHistory(req, res) {
         auctionId: {
           _id: auction._id,
           title: auction.title,
-          item: auction.item,
-          images: auction.item?.images || auction.images || [],
+          product: auction.product,
+          images: auction.product?.images || auction.images || [],
           currentBid: auction.currentBid ?? auction.current ?? 0,
           startingPrice: auction.startingPrice ?? 0,
           totalBids: auction.totalBids ?? auction.bids ?? 0,
@@ -95,26 +95,26 @@ export async function getBiddingHistory(req, res) {
 export async function getWatchlist(req, res) {
   try {
     const userId = req.user?._id;
-    if (!userId) return res.status(401).json({ message: "Unauthorized", watchlist: [] });
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    const items = await Watchlist.find({ userId: new mongoose.Types.ObjectId(userId) })
+    const list = await Watchlist.find({ userId: new mongoose.Types.ObjectId(userId) })
       .sort({ createdAt: -1 })
       .populate({
         path: "auctionId",
-        // Avoid selecting both `item` and `item.images` together (causes projection collision in MongoDB)
-        // Select the auction fields we need; `item` includes `images` so no need to list both.
-        select: "title item currentBid startingPrice totalBids endTime status",
+        // Avoid selecting both `product` and `product.images` together (causes projection collision in MongoDB)
+        // Select the auction fields we need; `product` includes `images` so no need to list both.
+        select: "title product currentBid startingPrice totalBids endTime status",
       })
       .lean();
 
-    const watchlist = items.map((it) => ({
+    const watchlist = list.map((it) => ({
       _id: it._id,
       auctionId: it.auctionId
         ? {
             _id: it.auctionId._id,
             title: it.auctionId.title,
-            item: it.auctionId.item,
-            images: it.auctionId.item?.images || it.auctionId.images || [],
+            product: it.auctionId.product,
+            images: it.auctionId.product?.images || it.auctionId.images || [],
             currentBid: it.auctionId.currentBid ?? it.auctionId.current ?? 0,
             startingPrice: it.auctionId.startingPrice ?? 0,
             totalBids: it.auctionId.totalBids ?? it.auctionId.bids ?? 0,
@@ -169,10 +169,16 @@ export async function removeFromWatchlist(req, res) {
     return res.status(500).json({ message: err.message });
   }
 }
+
 export async function updateUserProfile(req, res) {
   try {
     const userId = req.user?._id;
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return res.status(400).json({ message: "Unauthorized" });
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
 
     const { fullname, bio, address, profilePhoto } = req.body;
     const updateData = {};
@@ -181,16 +187,18 @@ export async function updateUserProfile(req, res) {
     if (bio !== undefined) updateData.bio = bio;
     if (profilePhoto !== undefined) updateData.profilePhoto = profilePhoto;
     
-    // Handle nested address update
     if (address) {
-      updateData.address = {
-        street: address.street || '',
-        city: address.city || '',
-        state: address.state || '',
-        postalCode: address.postalCode || '',
-        country: address.country || ''
-      };
+      if (user.address) {
+        // update existing address
+        await Address.findByIdAndUpdate(user.address, address, { runValidators: true });
+      } else {
+        // create new address
+        const newAddress = await Address.create(address);
+        user.address = newAddress._id;
+      }
     }
+
+    await user.save();
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
@@ -198,9 +206,6 @@ export async function updateUserProfile(req, res) {
       { new: true, runValidators: true }
     ).select('-password -verificationCode -resetToken -resetTokenExpiry');
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
 
     return res.status(200).json({
       success: true,
@@ -209,9 +214,19 @@ export async function updateUserProfile(req, res) {
     });
   } catch (err) {
     console.error("updateUserProfile error:", err);
-    return res.status(500).json({
-      success: false,
-      message: err.message || "Failed to update profile"
-    });
+    return res.status(500).json({ success: false, message: err.message });
   }
 }
+
+export const getMyPayments = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized"});
+
+    const payments = await Payment.find({ userId: userId, type: 'WINNING PAYMENT' }).lean();
+    return res.status(200).json({ success: true, payments });
+  } catch (err) {
+    console.error('getMyPayments error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};

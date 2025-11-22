@@ -2,7 +2,10 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 
-const secret = "$@BidSphere";
+const secret = process.env.JWT_SECRET;
+if (!secret) {
+    throw new Error("JWT_SECRET is missing in environment variables.");
+}
 
 // Generate JWT Token
 function setUser(user) {
@@ -11,7 +14,8 @@ function setUser(user) {
             _id: user._id,
             email: user.email,
         },
-        secret
+        secret,
+        { expiresIn: "7d" }
     );
 }
 

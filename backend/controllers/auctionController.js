@@ -1,5 +1,6 @@
-    import Auction from "../models/Auction.js";
+import Auction from "../models/Auction.js";
 import Bid from "../models/Bids.js";
+import Product from "../models/Product.js";
 import mongoose from "mongoose";
 import User from "../models/User.js";
 import { logAuctionEvent } from "../services/logger.service.js";
@@ -61,49 +62,51 @@ async function createAuction(req, res) {
   try {
     const {
       title,
-      name,
-      description,
-      images=[],
-      category,
-      condition,
-      metadata = {},
       startingPrice,
       minIncrement,
-      buyItNowPrice,
+      reservePrice,
       startTime,
       endTime,
     }=req.body;
 
-    const userId=req.user._id;
-    const start=new Date(startTime);
-    const end=new Date(endTime);
+    const userId = req.user._id;
+    const start = new Date(startTime);
+    const end = new Date(endTime);
     // New auctions start as "YET_TO_BE_VERIFIED" until admin verifies them
     const status = "YET_TO_BE_VERIFIED";
 
+    const now = new Date();
+    const regOpenTime = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+
+    let isRegistrationOpen = now >= regOpenTime && now < start;
+
+    // create product
+    const product = await Product.create(req.productData)
+
+    // create auction
     const auction = await Auction.create({
       title: String(title).trim(),
-      item: {
-        name: String(name).trim(),
-        description: description || undefined,
-        category: category || undefined,
-        condition: condition || undefined,
-        images: Array.isArray(images) ? images : [],
-        metadata: metadata || {},
-      },
+      product: product,
       createdBy: userId,
       status,
       verified: false,
       startingPrice: Number(startingPrice),
       minIncrement: Number(minIncrement),
+      reservePrice,
       currentBid: 0,
-      buyItNowPrice: buyItNowPrice !== undefined ? Number(buyItNowPrice) : undefined,
       startTime: start,
       endTime: end,
       autoBidders: [],
+      registrations: [],
+      isRegistrationOpen,
       totalBids: 0,
       totalParticipants: 0,
     });
 
+    product.auctionId = auction._id;
+    await product.save();
+
+    // logs
     const auctionOwner = await User.findById(userId);
     await logAuctionEvent({
       auctionId: auction._id,
@@ -411,6 +414,10 @@ const handleRegisterInAuction = async (req, res) => {
     if (!auction) {
       return res.status(400).json({ success: false, message: "Auction not found" });
     } 
+
+    if (!auction.isRegistrationOpen) {
+      return res.status(400).json({ success: false, message: "Registration is not started yet" })
+    }
 
     const user = await User.findOne({ email });
     if (!user) {

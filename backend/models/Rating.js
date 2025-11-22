@@ -3,17 +3,17 @@ import mongoose from 'mongoose';
 const ratingSchema = new mongoose.Schema({
     auctionId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Auction',
+        ref: 'auction',
         required: true
     },
     sellerId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
     raterId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true
     },
     rating: {

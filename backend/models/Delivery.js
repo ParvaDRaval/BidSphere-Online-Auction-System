@@ -21,18 +21,14 @@ const deliverySchema = new mongoose.Schema({
     ref: 'payment'
   },
   buyerAddress: {
-    street: { type: String, required: true },
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    postalCode: { type: String, required: true },
-    country: { type: String, required: true }
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'address',
+    required: true
   },
   sellerAddress: {
-    street: { type: String },
-    city: { type: String },
-    state: { type: String },
-    postalCode: { type: String },
-    country: { type: String }
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'address',
+    required: true
   },
   paymentStatus: {
     type: String,
@@ -44,6 +40,7 @@ const deliverySchema = new mongoose.Schema({
     enum: ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
     default: 'PENDING'
   },
+  
   trackingNumber: {
     type: String
   },

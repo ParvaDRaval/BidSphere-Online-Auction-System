@@ -4,11 +4,11 @@ const AdminNotificationSchema = new mongoose.Schema({
 
     auctionId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "auction"
+        ref: 'auction'
     },
     userId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "user"
+        ref: 'user'
     },
     
     type: { 

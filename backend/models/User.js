@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
+    
     fullname:{
         type: String,
     },
@@ -21,14 +22,9 @@ const userSchema = new mongoose.Schema({
         type: String,
     },
     address: {
-      type: {
-        street: { type: String },
-        city: { type: String },
-        state: { type: String },
-        postalCode: { type: String },
-        country: { type: String }
-      },
-      default: null
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'address',
+        default: null
     },
     profilePhoto:{
         type : String,
@@ -49,12 +45,12 @@ const userSchema = new mongoose.Schema({
     },
 },{timestamps: true});
 
-const User = mongoose.model('user', userSchema);
+// Query: get verified or unverified users (for admin dashboards)
+userSchema.index({ isVerified: 1 });
 
-try {
-    mongoose.model("User");
-} catch {
-    mongoose.model("User", userSchema);
-}
+// Query: sort or fetch latest registered users
+userSchema.index({ createdAt: -1 });
+
+const User = mongoose.model('user', userSchema);
 
 export default User;

@@ -5,7 +5,6 @@ import { setUser , generateHashPassword} from "../services/auth.js";
 import { SendVerificationCode, WelcomeEmail, SendResetPwdEmail } from "../services/email.sender.js";
 
 
-
 async function handleRegister (req, res) {
   try {
     const { username, email, password} = req.body;
@@ -69,12 +68,12 @@ async function handleLogin (req, res) {
 
     const token = setUser(user);
     res.cookie("token", token, {
-    httpOnly: true,
-    sameSite: "none",
-    secure: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: "/",
-  });
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    });
   
     return res.json({ message: "Login successful", token, user: { username: user.username, email: user.email } });
   }
@@ -106,7 +105,6 @@ async function verifyEmail (req, res) {
     }
 
     const user = await User.findOne({ email, verificationCode: code });
-    // console.log(user);
     if (!user) {
         return res.status(400).json({ message: "Invalid User" });
     }
@@ -121,35 +119,6 @@ async function verifyEmail (req, res) {
   catch(err){
     console.error("email verification error:", err);
     return res.status(400).json({ success: false, message: err.message });
-  }
-}
-
-async function getCurrentUser(req, res) {
-  try {
-    // checkAuth middleware may set req.user to decoded token or null
-    const tokenUser = req.user;
-    if (!tokenUser) return res.status(200).json({ user: null });
-
-    // Fetch full user profile from DB to ensure we return address, bio, fullname, profilePhoto, etc.
-    const fullUser = await User.findById(tokenUser._id).select('-password -verificationCode -resetToken -resetTokenExpiry').lean();
-    if (!fullUser) return res.status(200).json({ user: null });
-
-    // Normalize fields for frontend consumption
-    const publicUser = {
-      _id: fullUser._id,
-      username: fullUser.username,
-      email: fullUser.email,
-      fullname: fullUser.fullname || '',
-      bio: fullUser.bio || '',
-      address: fullUser.address || null,
-      profilePhoto: fullUser.profilePhoto || null,
-      isVerified: !!fullUser.isVerified,
-    };
-
-    return res.status(200).json({ user: publicUser });
-  } catch (err) {
-    console.error("getCurrentUser error:", err);
-    return res.status(500).json({ user: null, message: err.message });
   }
 }
 
@@ -235,5 +204,34 @@ async function handleResetPwd (req, res) {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+async function getCurrentUser(req, res) {
+  try {
+    // checkAuth middleware may set req.user to decoded token or null
+    const tokenUser = req.user;
+    if (!tokenUser) return res.status(200).json({ user: null });
+
+    // Fetch full user profile from DB to ensure we return address, bio, fullname, profilePhoto, etc.
+    const fullUser = await User.findById(tokenUser._id).select('-password -verificationCode -resetToken -resetTokenExpiry').lean();
+    if (!fullUser) return res.status(200).json({ user: null });
+
+    // Normalize fields for frontend consumption
+    const publicUser = {
+      _id: fullUser._id,
+      username: fullUser.username,
+      email: fullUser.email,
+      fullname: fullUser.fullname || '',
+      bio: fullUser.bio || '',
+      address: fullUser.address || null,
+      profilePhoto: fullUser.profilePhoto || null,
+      isVerified: !!fullUser.isVerified,
+    };
+
+    return res.status(200).json({ user: publicUser });
+  } catch (err) {
+    console.error("getCurrentUser error:", err);
+    return res.status(500).json({ user: null, message: err.message });
+  }
+}
 
 export { handleRegister , handleLogin, handleLogout, verifyEmail, getCurrentUser, handleResetPwdEmail, handleResetPwd };

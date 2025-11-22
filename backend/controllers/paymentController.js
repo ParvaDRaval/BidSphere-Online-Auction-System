@@ -236,16 +236,3 @@ export const getPaymentById = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
-
-export const getMyPayments = async (req, res) => {
-  try {
-    const userId = req.user?._id;
-    if (!userId) return res.status(401).json({ success: false, payments: [] });
-
-    const payments = await Payment.find({ userId: userId, type: 'WINNING PAYMENT' }).lean();
-    return res.status(200).json({ success: true, payments });
-  } catch (err) {
-    console.error('getMyPayments error:', err);
-    return res.status(500).json({ success: false, message: err.message });
-  }
-};

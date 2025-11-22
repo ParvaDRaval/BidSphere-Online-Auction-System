@@ -2,61 +2,103 @@ import { isValidObjectId } from "mongoose";
 
 //middleware to validate required fields while creation
 function validateCreateAuction(req, res, next) {
-  const { title, name, startingPrice, minIncrement, startTime, endTime } = req.body;
+  const { title, name, category, condition, startingPrice, minIncrement, reservePrice, startTime, endTime } = req.body;
 
-   if (!title || String(title).trim() === "") {
-    return res.status(400).json({ success: false, message: "Auction title is required" });
+  if (!title || String(title).trim() === "") {
+    return res.status(400).json({ 
+      success: false, 
+      message: "Auction title is required" 
+    });
   }
 
   if (!name || String(name).trim() === "") {
-    return res.status(400).json({ success: false, message: "Item name is required" });
+    return res.status(400).json({ 
+      success: false, 
+      message: "Product name is required" 
+      });
   }
 
-  if (startingPrice === undefined || startingPrice === null || 
-      isNaN(Number(startingPrice)) || Number(startingPrice) < 0) {
+  if (!category || String(category).trim() === "") {
+    return res.status(400).json({
+      success: false,
+      message: "Category is required and must be a non-empty string"
+    });
+  }
+
+  const allowedConditions = ["new", "like new", "good", "fair"];
+  if (!condition || !allowedConditions.includes(condition)) {
+    return res.status(400).json({
+      success: false,
+      message: `Condition must be one of: ${allowedConditions.join(", ")}`
+    });
+  }
+
+  const sp = Number(startingPrice);
+  if (!Number.isFinite(sp) || sp < 0) {
     return res.status(400).json({ 
       success: false,
       message: "startingPrice is required and must be a non-negative number" 
     });
   }
 
-  if (minIncrement === undefined || minIncrement === null || 
-      isNaN(Number(minIncrement)) || Number(minIncrement) <= 0) {
+  const mi = Number(minIncrement);
+  if (!Number.isFinite(mi) || mi <= 0) {
     return res.status(400).json({ 
       success: false,
       message: "minIncrement is required and must be a positive number" 
     });
   }
 
+   if (reservePrice !== undefined && reservePrice !== null && reservePrice !== "") {
+    const rp = Number(reservePrice);
+
+    if (!Number.isFinite(rp) || rp < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "reservePrice must be a non-negative number"
+      });
+    }
+
+    if (rp < sp) {
+      return res.status(400).json({
+        success: false,
+        message: "reservePrice must be greater than or equal to startingPrice"
+      });
+    }
+  }
+
   if (!startTime || !endTime) {
-    return res.status(400).json({ success: false, message: "startTime and endTime are required" });
+    return res.status(400).json({ 
+      success: false, 
+      message: "startTime and endTime are required" 
+    });
   }
 
   const s = new Date(startTime);
   const e = new Date(endTime);
   
   if (isNaN(s.getTime()) || isNaN(e.getTime())) {
-    return res.status(400).json({ success: false, message: "Invalid startTime or endTime" });
+    return res.status(400).json({ 
+      success: false, 
+      message: "Invalid startTime or endTime" 
+    });
   }
 
   if (e <= s) {
-    return res.status(400).json({ success: false, message: "endTime must be after startTime" });
+    return res.status(400).json({ 
+      success: false, 
+      message: "endTime must be after startTime" 
+    });
   }
 
-  if (req.body.buyItNowPrice !== undefined) {
-    if (isNaN(Number(req.body.buyItNowPrice)) || Number(req.body.buyItNowPrice) <= 0) {
-      return res.status(400).json({ 
-        success: false,
-        message: "buyItNowPrice must be a positive number" 
-      });
-    }
-    if (Number(req.body.buyItNowPrice) <= Number(startingPrice)) {
-      return res.status(400).json({ 
-        success: false,
-        message: "buyItNowPrice must be greater than startingPrice" 
-      });
-    }
-  }
+  req.productData = {
+    name: name.trim(),
+    category: category.trim(),
+    condition,
+    images: Array.isArray(images) ? images.map(i => i.trim()) : [],
+    metadata: metadata || {},
+    description: description?.trim(),
+  };
 
   next();
 }
@@ -73,7 +115,6 @@ function validateUpdateAuction(req, res, next) {
     "metadata",
     "startingPrice",
     "minIncrement",
-    "buyItNowPrice",
     "startTime",
     "endTime",
   ];
@@ -116,14 +157,6 @@ function validateUpdateAuction(req, res, next) {
     return res.status(400).json({ 
       success: false,
       message: "minIncrement must be a positive number" 
-    });
-  }
-
-  if (req.body.buyItNowPrice !== undefined && 
-      (isNaN(Number(req.body.buyItNowPrice)) || Number(req.body.buyItNowPrice) <= 0)) {
-    return res.status(400).json({ 
-      success: false,
-      message: "buyItNowPrice must be a positive number" 
     });
   }
 
