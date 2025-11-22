@@ -18,11 +18,13 @@ const PaymentSchema = new mongoose.Schema({
         required: true 
     },
     auctionId: { 
-        type: String, 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'auction',
         required: true 
     },
     userId: { 
-        type: String, 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user', 
         required: true 
     },
     status: { 
@@ -56,6 +58,18 @@ const PaymentSchema = new mongoose.Schema({
     }
 
 }, { timestamps: true });
+
+// Query: find all payments for a specific auction
+PaymentSchema.index({ auctionId: 1 });
+
+// Query: find all payments by a specific user
+PaymentSchema.index({ userId: 1 });
+
+// Query: find all pending or failed payments quickly
+PaymentSchema.index({ status: 1 });
+
+// Query: sort payments by creation time for analytics or dashboard
+PaymentSchema.index({ createdAt: -1 });
 
 const Payment = mongoose.model('payment', PaymentSchema);
 

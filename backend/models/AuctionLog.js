@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 const logEntrySchema = new mongoose.Schema({
   userId: { 
     type: mongoose.Schema.Types.ObjectId, 
-    ref: "user" 
+    ref: 'user'
   },
   userName: { 
     type: String,
@@ -34,18 +34,25 @@ const logEntrySchema = new mongoose.Schema({
   details: { type: Object, default: {} },
   timestamp: { type: Date, default: Date.now },
 }, 
-{ _id: false } // subdocs don’t need separate IDs
+{ _id: false } // subdocs don't need separate IDs
 );
 
 const auctionLogSchema = new mongoose.Schema({
   auctionId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "auction",
+    ref: 'auction',
     required: true,
     unique: true
   },
   logs: [logEntrySchema],
-},{ timestamps: true });
+}, { timestamps: true });
 
+// Query: find all auctions where user participated
+auctionLogSchema.index({ "logs.userId": 1 });
 
-export default mongoose.model("auctionlog", auctionLogSchema);
+// Query: find all logs of a specific type (e.g. BID_PLACED)
+auctionLogSchema.index({ "logs.type": 1 });
+
+const AuctionLog = mongoose.model("auctionlog", auctionLogSchema); 
+
+export default AuctionLog

@@ -5,7 +5,6 @@ import { setUser , generateHashPassword} from "../services/auth.js";
 import { SendVerificationCode, WelcomeEmail, SendResetPwdEmail } from "../services/email.sender.js";
 
 
-
 async function handleRegister (req, res) {
   try {
     const { username, email, password} = req.body;
@@ -69,12 +68,12 @@ async function handleLogin (req, res) {
 
     const token = setUser(user);
     res.cookie("token", token, {
-    httpOnly: true,
-    sameSite: "none",
-    secure: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: "/",
-  });
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    });
   
     return res.json({ message: "Login successful", token, user: { username: user.username, email: user.email } });
   }
@@ -106,7 +105,6 @@ async function verifyEmail (req, res) {
     }
 
     const user = await User.findOne({ email, verificationCode: code });
-    // console.log(user);
     if (!user) {
         return res.status(400).json({ message: "Invalid User" });
     }
