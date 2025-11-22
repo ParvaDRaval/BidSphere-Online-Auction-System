@@ -216,3 +216,7 @@ export async function updateUserProfile(profileData) {
 
   return response.json();
 }
+
+// Ratings
+export const getSellerRatings = (sellerId) => getJSON(`${API_BASE_URL}/bidsphere/ratings/seller/${sellerId}`);
+export const rateSeller = (payload) => postJSON(`${API_BASE_URL}/bidsphere/ratings`, payload);

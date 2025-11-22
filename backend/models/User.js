@@ -51,4 +51,10 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('user', userSchema);
 
+try {
+    mongoose.model("User");
+} catch {
+    mongoose.model("User", userSchema);
+}
+
 export default User;

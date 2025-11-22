@@ -15,6 +15,8 @@ import {
   getWatchlist,
 } from "../api";
 import { toast } from "react-toastify";
+import SellerRating from "./SellerRating";
+import RatingForm from "./RatingForm";
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -39,6 +41,7 @@ function AuctionDetails() {
   const [autoBidData, setAutoBidData] = useState(null);
   const [autoBidLoading, setAutoBidLoading] = useState(false);
   const [showAutoBidModal, setShowAutoBidModal] = useState(false);
+  const [ratingRefreshKey, setRatingRefreshKey] = useState(0);
   // watchlist state
   const [watchlisted, setWatchlisted] = useState(false);
   const [watchlistLoading, setWatchlistLoading] = useState(false);
@@ -481,6 +484,11 @@ function AuctionDetails() {
                 <div className="text-xs text-gray-600 mt-2">Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}</div>
               </div>
 
+              {/* Show seller rating before payment so users can evaluate seller */}
+              {seller?._id && (
+                <SellerRating sellerId={seller._id} refreshKey={ratingRefreshKey} />
+              )}
+
               <div className="bg-white p-4 rounded-lg border">
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="bg-gray-50 p-3 rounded">
@@ -683,6 +691,21 @@ function AuctionDetails() {
                   <div className="text-xs text-gray-500">Verified Seller</div>
                 </div>
               </div>
+              {isAuctionLive && seller?._id && (
+                 <SellerRating sellerId={seller._id} refreshKey={ratingRefreshKey} />
+              )}
+              {/* Show rating form when auction ended and current user is winner and has paid */}
+              {auction?.status === 'ENDED' && isTopBidder && hasPaid && currentUser?._id && seller?._id && (
+                <RatingForm
+                  auctionId={auction._id}
+                  sellerId={seller._id}
+                  raterId={currentUser._id}
+                  onSubmitted={async () => {
+                    // refresh seller rating display
+                    setRatingRefreshKey((k) => k + 1);
+                  }}
+                />
+              )}
             </div>
 
             {/* Winner Info - Show when auction ended */}
