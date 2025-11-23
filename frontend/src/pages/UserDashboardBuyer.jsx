@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCurrentUser, getWatchlist, getBiddingHistory, getMyDeliveries, getMyPayments, createDelivery } from "../api";
+import { generateInvoicePDF } from "../utils/invoicePDF";
 /* eslint-disable react/prop-types */
 
 function StatCard({ title, value, small }) {
@@ -114,6 +115,31 @@ export default function UserDashboardBuyer() {
   const [deliveriesSet, setDeliveriesSet] = useState(new Set());
   const [paymentsSuccessSet, setPaymentsSuccessSet] = useState(new Set());
   const [allDeliveries, setAllDeliveries] = useState([]);
+
+  const handleDownloadInvoice = (biddingItem) => {
+    const auctionData = {
+      _id: biddingItem.auctionId?._id || biddingItem._id,
+      title: biddingItem.auctionId?.title || biddingItem.title,
+      description: biddingItem.auctionId?.description || biddingItem.description,
+      endTime: biddingItem.auctionId?.endTime || biddingItem.endTime,
+      final: biddingItem.final || biddingItem.amount,
+      currentBid: biddingItem.auctionId?.currentBid || biddingItem.current,
+      sellerId: biddingItem.auctionId?.sellerId || biddingItem.sellerId,
+      item: biddingItem.auctionId?.item || biddingItem.item
+    };
+
+    const userData = {
+      fullname: user?.fullname || user?.username,
+      email: user?.email,
+      phone: user?.phone
+    };
+
+    const deliveryData = allDeliveries.find(d => 
+      String(d.auctionId?._id || d.auctionId) === String(auctionData._id)
+    )?.buyerAddress || {};
+
+    generateInvoicePDF(auctionData, userData, deliveryData);
+  };
 
   // Delivery form states
   const [showDeliveryForm, setShowDeliveryForm] = useState(false);
@@ -519,7 +545,16 @@ export default function UserDashboardBuyer() {
                         </div>
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           {hasDelivery ? (
-                            <span className="px-3 py-2 bg-green-100 text-green-800 rounded text-sm">Delivery Saved</span>
+                            <>
+                              <span className="px-3 py-2 bg-green-100 text-green-800 rounded text-sm">Delivery Saved</span>
+                              <button 
+                                onClick={() => handleDownloadInvoice(b)}
+                                className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                                title="Download Invoice PDF"
+                              >
+                                📄 Invoice
+                              </button>
+                            </>
                           ) : (
                             <button onClick={() => openDeliveryForm(aid)} className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">Add Delivery Address</button>
                           )}
