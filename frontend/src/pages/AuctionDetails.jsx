@@ -12,8 +12,12 @@ import {
   getUserAutoBid,
   addToWatchlist,
   removeFromWatchlist,
+  getWatchlist,
 } from "../api";
 import { toast } from "react-toastify";
+import SellerRating from "./SellerRating";
+import SellerRatingSummary from "../components/SellerRatingSummary";
+import RatingForm from "./RatingForm";
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -38,6 +42,7 @@ function AuctionDetails() {
   const [autoBidData, setAutoBidData] = useState(null);
   const [autoBidLoading, setAutoBidLoading] = useState(false);
   const [showAutoBidModal, setShowAutoBidModal] = useState(false);
+  const [ratingRefreshKey, setRatingRefreshKey] = useState(0);
   // watchlist state
   const [watchlisted, setWatchlisted] = useState(false);
   const [watchlistLoading, setWatchlistLoading] = useState(false);
@@ -90,6 +95,27 @@ function AuctionDetails() {
     })();
     return () => (mounted = false);
   }, []);
+
+  // Check if auction is in user's watchlist
+  useEffect(() => {
+    let mounted = true;
+    async function checkWatchlist() {
+      if (!id || !currentUser?._id) return;
+      try {
+        const res = await getWatchlist();
+        if (!mounted) return;
+        const watchlist = res?.watchlist || [];
+        const isWatchlisted = watchlist.some(
+          (item) => String(item.auctionId?._id || item.auctionId) === String(id)
+        );
+        setWatchlisted(isWatchlisted);
+      } catch (err) {
+        // ignore - user might not be logged in
+      }
+    }
+    checkWatchlist();
+    return () => (mounted = false);
+  }, [id, currentUser?._id]);
 
   // fetch current user and check payment status for this auction
   useEffect(() => {
@@ -297,6 +323,55 @@ function AuctionDetails() {
     }
   };
 
+  // Share auction: use Web Share API when available, else copy link to clipboard or open mailto as fallback
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: auction?.title || 'Auction', url });
+        toast.success('Shared successfully');
+        return;
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast.success('Auction link copied to clipboard');
+        return;
+      }
+
+      // Fallback: open mail client with link
+      window.open(`mailto:?subject=${encodeURIComponent('Check out this auction')}&body=${encodeURIComponent(url)}`);
+      toast.info('Opened mail client to share link');
+    } catch (err) {
+      console.error('share error:', err);
+      toast.error('Failed to share the auction');
+    }
+  };
+
+  // Report auction: open mail client with a pre-filled report template
+  const handleReport = () => {
+    try {
+      const subject = `Report: ${auction?.title || auction?._id || 'Auction'}`;
+      const bodyLines = [
+        'I would like to report the following auction on BidSphere.',
+        '',
+        `Auction ID: ${auction?._id || ''}`,
+        `Title: ${auction?.title || ''}`,
+        `Seller: ${displaySellerName || ''}`,
+        `URL: ${window.location.href}`,
+        '',
+        'Reason (please describe):',
+        '\n',
+      ];
+      const mailto = `mailto:report@bidsphere.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+      window.location.href = mailto;
+      toast.info('Opening mail client to report the auction');
+    } catch (err) {
+      console.error('report mailto error:', err);
+      toast.error('Unable to open mail client for reporting');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -410,6 +485,11 @@ function AuctionDetails() {
                 <div className="text-xs text-gray-600 mt-2">Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}</div>
               </div>
 
+              {/* Show seller rating before payment so users can evaluate seller */}
+              {seller?._id && (
+                <SellerRatingSummary sellerId={seller._id} />
+              )}
+
               <div className="bg-white p-4 rounded-lg border">
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="bg-gray-50 p-3 rounded">
@@ -471,8 +551,8 @@ function AuctionDetails() {
                 </button>
 
                 <div className="flex gap-2 mt-2">
-                  <button className="flex-1 py-2 border rounded">Share</button>
-                  <button className="flex-1 py-2 border rounded">Report</button>
+                  <button onClick={handleShare} className="flex-1 py-2 border rounded">Share</button>
+                  <button onClick={handleReport} className="flex-1 py-2 border rounded">Report</button>
                 </div>
               </div>
 
@@ -608,11 +688,62 @@ function AuctionDetails() {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{displaySellerName.slice(0,2).toUpperCase()}</div>
                 <div>
-                  <div className="text-sm font-medium">{displaySellerName}</div>
+                  <button 
+                    onClick={() => navigate(`/seller/${seller._id}`)}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    {displaySellerName}
+                  </button>
                   <div className="text-xs text-gray-500">Verified Seller</div>
                 </div>
               </div>
+              {isAuctionLive && seller?._id && (
+                 <SellerRatingSummary sellerId={seller._id} />
+              )}
+              {/* Show rating form when auction ended and current user is winner and has paid */}
+              {auction?.status === 'ENDED' && isTopBidder && hasPaid && currentUser?._id && seller?._id && (
+                <RatingForm
+                  auctionId={auction._id}
+                  sellerId={seller._id}
+                  raterId={currentUser._id}
+                  onSubmitted={async () => {
+                    // refresh seller rating display
+                    setRatingRefreshKey((k) => k + 1);
+                  }}
+                />
+              )}
             </div>
+
+            {/* Winner Info - Show when auction ended */}
+            {auction?.status === 'ENDED' && topBidderId && topBids && topBids[0] && (
+              <div className="bg-white p-4 rounded-lg border shadow">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🏆</span>
+                  <div className="text-sm font-semibold text-gray-700">AUCTION WINNER</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-lg overflow-hidden">
+                    {topBids[0].userId?.profilePhoto ? (
+                      <img 
+                        src={topBids[0].userId.profilePhoto} 
+                        alt={topBids[0].userId?.username || 'Winner'} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>{(topBids[0].userId?.username || topBids[0].userId?.name || 'W').slice(0,2).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">
+                      {topBids[0].userId?.username || topBids[0].userId?.name || topBids[0].userId?.email?.split('@')[0] || 'Winner'}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Winning Bid: ₹{(highestBid || topBids[0].amount || 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Countdown Timer */}
             <div className="bg-yellow-100 p-4 rounded-lg shadow">
@@ -681,6 +812,44 @@ function AuctionDetails() {
                     {placingBid ? "Placing..." : bidAmount ? `Place Bid - ₹${bidAmount}` : "Place Bid"}
                   </button>
 
+                  {/* Watchlist Button */}
+                  <button
+                    onClick={async () => {
+                      if (watchlistLoading) return;
+                      setWatchlistLoading(true);
+                      try {
+                        if (!watchlisted) {
+                          await addToWatchlist(auction._id);
+                          setAuction((a) => ({ ...a, watching: (a?.watching || 0) + 1 }));
+                          setWatchlisted(true);
+                          toast.success("Added to watchlist");
+                        } else {
+                          await removeFromWatchlist(auction._id);
+                          setAuction((a) => ({ ...a, watching: Math.max(0, (a?.watching || 1) - 1) }));
+                          setWatchlisted(false);
+                          toast.info("Removed from watchlist");
+                        }
+                      } catch (err) {
+                        console.error("watchlist error:", err);
+                        toast.error(err?.message || "Failed to update watchlist");
+                      } finally {
+                        setWatchlistLoading(false);
+                      }
+                    }}
+                    className={`w-full mt-2 py-2 rounded font-semibold transition ${
+                      watchlisted 
+                        ? 'bg-red-100 text-red-800 hover:bg-red-200' 
+                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                    }`}
+                    disabled={watchlistLoading}
+                  >
+                    {watchlistLoading ? (
+                      watchlisted ? 'Removing...' : 'Adding...'
+                    ) : (
+                      watchlisted ? '❤️ Remove from Watchlist' : '🤍 Add to Watchlist'
+                    )}
+                  </button>
+
                   {/* Status Messages */}
                   {!isAuctionLive && !isSeller && (
                     <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
@@ -743,9 +912,47 @@ function AuctionDetails() {
 
             {isSeller && (
               <div className="bg-white p-4 rounded-lg shadow">
-                <div className="text-center text-gray-600">
+                <div className="text-center text-gray-600 mb-3">
                   <p className="text-sm">You are the seller of this auction</p>
                 </div>
+                
+                {/* Watchlist button for sellers viewing other auctions */}
+                <button
+                  onClick={async () => {
+                    if (watchlistLoading) return;
+                    setWatchlistLoading(true);
+                    try {
+                      if (!watchlisted) {
+                        await addToWatchlist(auction._id);
+                        setAuction((a) => ({ ...a, watching: (a?.watching || 0) + 1 }));
+                        setWatchlisted(true);
+                        toast.success("Added to watchlist");
+                      } else {
+                        await removeFromWatchlist(auction._id);
+                        setAuction((a) => ({ ...a, watching: Math.max(0, (a?.watching || 1) - 1) }));
+                        setWatchlisted(false);
+                        toast.info("Removed from watchlist");
+                      }
+                    } catch (err) {
+                      console.error("watchlist error:", err);
+                      toast.error(err?.message || "Failed to update watchlist");
+                    } finally {
+                      setWatchlistLoading(false);
+                    }
+                  }}
+                  className={`w-full py-2 rounded font-semibold transition ${
+                    watchlisted 
+                      ? 'bg-red-100 text-red-800 hover:bg-red-200' 
+                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                  }`}
+                  disabled={watchlistLoading}
+                >
+                  {watchlistLoading ? (
+                    watchlisted ? 'Removing...' : 'Adding...'
+                  ) : (
+                    watchlisted ? '❤️ Remove from Watchlist' : '🤍 Add to Watchlist'
+                  )}
+                </button>
               </div>
             )}
 

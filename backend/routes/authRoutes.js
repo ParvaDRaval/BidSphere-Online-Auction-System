@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
 
-import { handleRegister , handleLogin, handleLogout, verifyEmail, getCurrentUser, handleResetPwdEmail, handleResetPwd } from "../controllers/authController.js";
+import { handleRegister , handleLogin, handleLogout, verifyEmail, getCurrentUser, handleResetPwdEmail, handleResetPwd, getUserById } from "../controllers/authController.js";
 import { checkAuth } from "../middleware/authMiddleware.js";
 // add user controller
 import { getWatchlist, addToWatchlist, removeFromWatchlist, getBiddingHistory, updateUserProfile } from "../controllers/userController.js";
@@ -14,6 +14,10 @@ router.post("/logout", handleLogout);
 
 // GET /bidsphere/user/me - returns current user based on session cookie (token)
 router.get("/me", checkAuth, getCurrentUser);
+
+// GET /bidsphere/user/:id - get user by ID (public endpoint for seller info)
+router.get("/:id", getUserById);
+
 router.post("/forgetpwd", handleResetPwdEmail);
 router.post("/resetpwd", handleResetPwd);
 

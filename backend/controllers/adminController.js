@@ -60,7 +60,12 @@ catch(err){
 
 async function adminLogout (req, res) {
 try{  
-  res.clearCookie("adminToken");
+  res.clearCookie("adminToken", { 
+    httpOnly: true,        
+    secure: true,          
+    sameSite: "none",      
+    path: "/" 
+  });
   return res.json({ message: "Admin logged out" });
 }
 catch(err){

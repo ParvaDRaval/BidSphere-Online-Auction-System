@@ -126,6 +126,7 @@ export const getCategories = async (opts = {}) => {
 
 // User endpoints
 export const getCurrentUser = () => getJSON(`${BASE_USER}/me`);
+export const getUserById = (userId) => getJSON(`${BASE_USER}/${userId}`);
 export const getWatchlist = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_USER}/watchlist${qs ? `?${qs}` : ""}`);
@@ -183,6 +184,10 @@ export const createWinningUpiPayment = (auctionId) => postJSON(`${BASE_AUCTION}/
 // Delivery endpoint (save buyer delivery address after payment)
 export const createDelivery = (payload) => postJSON(`${API_BASE_URL}/bidsphere/delivery/create`, payload);
 export const getMyDeliveries = () => getJSON(`${API_BASE_URL}/bidsphere/delivery/my-deliveries`);
+export const getAllDeliveries = (queryParams = {}) => {
+  const qs = new URLSearchParams(queryParams).toString();
+  return getJSON(`${API_BASE_URL}/bidsphere/delivery/all${qs ? `?${qs}` : ''}`);
+};
 export const getMyPayments = () => getJSON(`${BASE_USER}/payments`);
 // Get payment status (used by frontend to detect admin confirmation)
 export const getPayment = (auctionId, paymentId) => getJSON(`${BASE_AUCTION}/${auctionId}/payment/${paymentId}`);
@@ -212,3 +217,9 @@ export async function updateUserProfile(profileData) {
 
   return response.json();
 }
+
+// Ratings
+export const getSellerRatings = (sellerId) => getJSON(`${API_BASE_URL}/bidsphere/ratings/seller/${sellerId}`);
+export const rateSeller = (payload) => postJSON(`${API_BASE_URL}/bidsphere/ratings`, payload);
+export const updateRating = (ratingId, payload) => putJSON(`${API_BASE_URL}/bidsphere/ratings/${ratingId}`, payload);
+export const deleteRating = (ratingId) => del(`${API_BASE_URL}/bidsphere/ratings/${ratingId}`);
