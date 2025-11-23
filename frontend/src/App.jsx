@@ -1,5 +1,5 @@
-import React from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Home from "./pages/Home";
@@ -27,10 +27,23 @@ import Contact from "./pages/contact";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Settings from "./pages/AuctionSettings";
+import About from "./pages/About";
+import Help from "./pages/Help";
+import Feedback from "./pages/Feedback";
+
 function App() {
+  function ScrollToTop() {
+    const { pathname } = useLocation();
+    useEffect(() => {
+      // Scroll to top on route change
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }, [pathname]);
+    return null;
+  }
   return (
     <div className="bg-[#fdfbf6] min-h-screen">
       <Navbar />
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/categories" element={<Categories />} />
@@ -54,8 +67,11 @@ function App() {
           path="/registration-fee/:auctionId"
           element={<RegistrationFee />}
         />
-          <Route path="/auction/:id/pay" element={<PayFees />} />
-          <Route path="/delivery/create/:auctionId" element={<DeliveryCreate />} />
+        <Route path="/auction/:id/pay" element={<PayFees />} />
+        <Route
+          path="/delivery/create/:auctionId"
+          element={<DeliveryCreate />}
+        />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -63,6 +79,9 @@ function App() {
         <Route path="/buyer-dashboard" element={<UserDashboardBuyer />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/help" element={<Help />} />
+        <Route path="/feedback" element={<Feedback />} />
       </Routes>
       <Footer />
     </div>
