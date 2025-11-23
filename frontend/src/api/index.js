@@ -220,3 +220,5 @@ export async function updateUserProfile(profileData) {
 // Ratings
 export const getSellerRatings = (sellerId) => getJSON(`${API_BASE_URL}/bidsphere/ratings/seller/${sellerId}`);
 export const rateSeller = (payload) => postJSON(`${API_BASE_URL}/bidsphere/ratings`, payload);
+export const updateRating = (ratingId, payload) => putJSON(`${API_BASE_URL}/bidsphere/ratings/${ratingId}`, payload);
+export const deleteRating = (ratingId) => del(`${API_BASE_URL}/bidsphere/ratings/${ratingId}`);

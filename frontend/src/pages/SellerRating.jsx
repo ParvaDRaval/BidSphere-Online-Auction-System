@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getSellerRatings } from "../api";
+import { toast } from "react-toastify";
 
 // Simple star renderer
 function Stars({ value = 0, max = 5 }) {
@@ -13,10 +14,11 @@ function Stars({ value = 0, max = 5 }) {
   );
 }
 
-export default function SellerRating({ sellerId, limit = 3, refreshKey }) {
-  const [loading, setLoading] = useState(false);
+export default function SellerRating({ sellerId, limit = 5, currentUserId }) {
   const [ratings, setRatings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -81,20 +83,24 @@ export default function SellerRating({ sellerId, limit = 3, refreshKey }) {
         ) : ratings.length === 0 ? (
           <div className="text-sm text-gray-500">No ratings yet</div>
         ) : (
-          ratings.slice(0, limit).map((r) => (
-            <div key={r._id || (r.raterId && r.raterId._id) || Math.random()} className="mt-3 border-t pt-3">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium">{r.raterId?.username || r.raterId?.name || (r.raterId?.email || "").split("@")[0] || "Anonymous"}</div>
-                <div className="text-xs text-gray-500">{new Date(r.createdAt).toLocaleDateString()}</div>
+          ratings.slice(0, limit).map((r) => {
+            return (
+              <div key={r._id || (r.raterId && r.raterId._id) || Math.random()} className="mt-3 border-t pt-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">{r.raterId?.username || r.raterId?.name || (r.raterId?.email || "").split("@")[0] || "Anonymous"}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-gray-500">{new Date(r.createdAt).toLocaleDateString()}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="text-yellow-500">{Array.from({ length: 5 }).map((_, i) => (
+                    <span key={i}>{i < Math.round(r.rating) ? "★" : "☆"}</span>
+                  ))}</div>
+                  <div className="text-sm text-gray-700">{r.review || "(no review text)"}</div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="text-yellow-500">{Array.from({ length: 5 }).map((_, i) => (
-                  <span key={i}>{i < Math.round(r.rating) ? "★" : "☆"}</span>
-                ))}</div>
-                <div className="text-sm text-gray-700">{r.review || "(no review text)"}</div>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
