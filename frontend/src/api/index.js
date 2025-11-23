@@ -126,6 +126,7 @@ export const getCategories = async (opts = {}) => {
 
 // User endpoints
 export const getCurrentUser = () => getJSON(`${BASE_USER}/me`);
+export const getUserById = (userId) => getJSON(`${BASE_USER}/${userId}`);
 export const getWatchlist = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_USER}/watchlist${qs ? `?${qs}` : ""}`);
@@ -216,3 +217,9 @@ export async function updateUserProfile(profileData) {
 
   return response.json();
 }
+
+// Ratings
+export const getSellerRatings = (sellerId) => getJSON(`${API_BASE_URL}/bidsphere/ratings/seller/${sellerId}`);
+export const rateSeller = (payload) => postJSON(`${API_BASE_URL}/bidsphere/ratings`, payload);
+export const updateRating = (ratingId, payload) => putJSON(`${API_BASE_URL}/bidsphere/ratings/${ratingId}`, payload);
+export const deleteRating = (ratingId) => del(`${API_BASE_URL}/bidsphere/ratings/${ratingId}`);

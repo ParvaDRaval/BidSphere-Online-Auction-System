@@ -211,6 +211,13 @@ async function getAuctionById(req, res) {
       .populate("userId", "username email")
       .lean();
 
+    const allBids = await Bid.find({auctionId: auction._id}).select("userId").lean();
+    const uniqueBidders = new Set(allBids.map(bid => bid.userId.toString()));
+    const totalParticipants = uniqueBidders.size;
+    
+    auction.totalBids = allBids.length;
+    auction.totalParticipants = totalParticipants;
+
     return res.status(200).json({
       success: true,
       auction,

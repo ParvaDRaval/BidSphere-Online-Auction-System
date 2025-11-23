@@ -103,6 +103,6 @@ app.use("/bidsphere/delivery", deliveryRoutes);
 
 // Rating Routes
 import ratingRoutes from './routes/ratingRoutes.js';
-app.use('/bidsphere/ratings', ratingRoutes);
+app.use('/bidsphere/ratings', restrictToLoggedinUserOnly, ratingRoutes);
 
 export default app;
