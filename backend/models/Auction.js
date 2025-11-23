@@ -103,6 +103,11 @@ const auctionSchema = new mongoose.Schema(
       average: { type: Number, default: 0 },
       count: { type: Number, default: 0 },
     },
+
+    hasBeenExtended: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
