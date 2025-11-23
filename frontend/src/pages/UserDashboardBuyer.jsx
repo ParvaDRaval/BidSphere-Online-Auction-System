@@ -23,12 +23,18 @@ function WatchlistRow({
   bid = "₹250",
   bids = 0,
   timeLeft = "—",
+  auctionId,
 }) {
   return (
-    <div className="flex items-center gap-4 bg-white border rounded p-3">
+    <div className="flex items-center gap-4 bg-white border rounded p-3 hover:shadow-md transition-shadow cursor-pointer"
+         onClick={() => {
+           if (auctionId) {
+             window.location.href = `/auction/${auctionId}`;
+           }
+         }}>
       <div className="w-16 h-12 bg-gray-100 rounded" />
       <div className="flex-1">
-        <div className="font-medium">{title}</div>
+        <div className="font-medium hover:text-blue-600">{title}</div>
         <div className="text-xs text-gray-500 mt-1">
           Current bid <span className="font-semibold text-gray-800">{bid}</span>{" "}
           • Bids {bids}
@@ -37,9 +43,9 @@ function WatchlistRow({
       <div className="text-right text-xs text-gray-500">
         <div className="text-sm text-red-600 font-semibold">{timeLeft}</div>
         <div className="mt-2">
-          <Link to="#" className="text-blue-600 text-xs">
+          <span className="text-blue-600 text-xs hover:underline">
             View Auction
-          </Link>
+          </span>
         </div>
       </div>
     </div>
@@ -337,21 +343,22 @@ export default function UserDashboardBuyer() {
                   <WatchlistRow
                     key={w._id || w.id || i}
                     title={
-                      w.title || w.item?.name || w.name || "Untitled Auction"
+                      w.auctionId?.title || w.title || w.auctionId?.item?.name || w.item?.name || w.name || "Untitled Auction"
                     }
                     bid={
-                      w.currentBid
-                        ? `₹${w.currentBid}`
-                        : w.startingPrice
-                        ? `₹${w.startingPrice}`
+                      w.auctionId?.currentBid || w.currentBid
+                        ? `₹${w.auctionId?.currentBid || w.currentBid}`
+                        : w.auctionId?.startingPrice || w.startingPrice
+                        ? `₹${w.auctionId?.startingPrice || w.startingPrice}`
                         : "—"
                     }
-                    bids={w.totalBids ?? w.bids ?? 0}
+                    bids={w.auctionId?.totalBids ?? w.auctionId?.bids ?? w.totalBids ?? w.bids ?? 0}
                     timeLeft={
                       w.endsIn ||
                       w.timeLeft ||
-                      (w.endTime ? new Date(w.endTime).toLocaleString() : "")
+                      (w.auctionId?.endTime || w.endTime ? new Date(w.auctionId?.endTime || w.endTime).toLocaleString() : "")
                     }
+                    auctionId={w.auctionId?._id || w._id || w.id}
                   />
                 ))
               )}
@@ -373,11 +380,17 @@ export default function UserDashboardBuyer() {
                 biddingHistory.map((b, idx) => (
                   <div
                     key={b._id || b.id || idx}
-                    className="bg-gray-50 p-3 rounded border flex items-center gap-4"
+                    className="bg-gray-50 p-3 rounded border flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => {
+                      const auctionId = b.auctionId?._id || b.auctionId || b._id;
+                      if (auctionId) {
+                        window.location.href = `/auction/${auctionId}`;
+                      }
+                    }}
                   >
                     <div className="w-16 h-12 bg-gray-100 rounded" />
                     <div className="flex-1">
-                      <div className="font-medium">
+                      <div className="font-medium hover:text-blue-600">
                         {b.auctionId?.title ||
                           b.title ||
                           b.auctionTitle ||
@@ -402,13 +415,20 @@ export default function UserDashboardBuyer() {
                       </div>
                     </div>
                     <div className="text-sm text-gray-500">
-                      {b.createdAt
-                        ? new Date(b.createdAt).toLocaleString()
-                        : b.when ||
-                          b.time ||
-                          (b.endedAt
-                            ? new Date(b.endedAt).toLocaleString()
-                            : "")}
+                      <div>
+                        {b.createdAt
+                          ? new Date(b.createdAt).toLocaleString()
+                          : b.when ||
+                            b.time ||
+                            (b.endedAt
+                              ? new Date(b.endedAt).toLocaleString()
+                              : "")}
+                      </div>
+                      <div className="mt-1">
+                        <span className="text-blue-600 text-xs hover:underline">
+                          View Auction
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -441,12 +461,18 @@ export default function UserDashboardBuyer() {
                     const hasDelivery = deliveriesSet.has(aid);
                     const hasPaymentSuccess = paymentsSuccessSet.has(aid);
                     return (
-                      <div key={b._id || b.auctionId?._id || idx} className="bg-gray-50 p-3 rounded border flex items-center justify-between">
+                      <div key={b._id || b.auctionId?._id || idx} className="bg-gray-50 p-3 rounded border flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer"
+                           onClick={() => {
+                             const auctionId = b.auctionId?._id || b._id;
+                             if (auctionId) {
+                               window.location.href = `/auction/${auctionId}`;
+                             }
+                           }}>
                         <div>
-                          <div className="font-medium">{b.auctionId?.title || b.title || 'Auction'}</div>
+                          <div className="font-medium hover:text-blue-600">{b.auctionId?.title || b.title || 'Auction'}</div>
                           <div className="text-xs text-gray-500">Final: {b.final ? `₹${b.final}` : b.amount ? `₹${b.amount}` : b.current ? `₹${b.current}` : '-'}</div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           {hasDelivery ? (
                             <Link to={`/delivery`} className="px-3 py-2 bg-gray-200 text-gray-800 rounded text-sm">Delivery Saved</Link>
                           ) : hasPaymentSuccess ? (
@@ -480,12 +506,18 @@ export default function UserDashboardBuyer() {
                     const aid = String(b.auctionId?._id || b._id || '');
                     const hasDelivery = deliveriesSet.has(aid);
                     return (
-                      <div key={b._id || b.auctionId?._id || idx} className="bg-gray-50 p-3 rounded border flex items-center justify-between">
+                      <div key={b._id || b.auctionId?._id || idx} className="bg-gray-50 p-3 rounded border flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer"
+                           onClick={() => {
+                             const auctionId = b.auctionId?._id || b._id;
+                             if (auctionId) {
+                               window.location.href = `/auction/${auctionId}`;
+                             }
+                           }}>
                         <div>
-                          <div className="font-medium">{b.auctionId?.title || b.title || 'Auction'}</div>
+                          <div className="font-medium hover:text-blue-600">{b.auctionId?.title || b.title || 'Auction'}</div>
                           <div className="text-xs text-gray-500">Final: {b.final ? `₹${b.final}` : b.amount ? `₹${b.amount}` : b.current ? `₹${b.current}` : '-'}</div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           {hasDelivery ? (
                             <span className="px-3 py-2 bg-green-100 text-green-800 rounded text-sm">Delivery Saved</span>
                           ) : (
