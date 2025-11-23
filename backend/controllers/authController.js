@@ -236,4 +236,25 @@ async function handleResetPwd (req, res) {
   }
 };
 
-export { handleRegister , handleLogin, handleLogout, verifyEmail, getCurrentUser, handleResetPwdEmail, handleResetPwd };
+async function getUserById(req, res) {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const user = await User.findById(id).select('-password -verificationCode -resetToken -resetTokenExpiry');
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ user });
+  } catch (error) {
+    console.error("getUserById error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export { handleRegister , handleLogin, handleLogout, verifyEmail, getCurrentUser, handleResetPwdEmail, handleResetPwd, getUserById };

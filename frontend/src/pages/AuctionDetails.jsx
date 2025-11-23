@@ -16,6 +16,7 @@ import {
 } from "../api";
 import { toast } from "react-toastify";
 import SellerRating from "./SellerRating";
+import SellerRatingSummary from "../components/SellerRatingSummary";
 import RatingForm from "./RatingForm";
 
 function pad(n) {
@@ -486,7 +487,7 @@ function AuctionDetails() {
 
               {/* Show seller rating before payment so users can evaluate seller */}
               {seller?._id && (
-                <SellerRating sellerId={seller._id} refreshKey={ratingRefreshKey} />
+                <SellerRatingSummary sellerId={seller._id} />
               )}
 
               <div className="bg-white p-4 rounded-lg border">
@@ -687,12 +688,17 @@ function AuctionDetails() {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{displaySellerName.slice(0,2).toUpperCase()}</div>
                 <div>
-                  <div className="text-sm font-medium">{displaySellerName}</div>
+                  <button 
+                    onClick={() => navigate(`/seller/${seller._id}`)}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    {displaySellerName}
+                  </button>
                   <div className="text-xs text-gray-500">Verified Seller</div>
                 </div>
               </div>
               {isAuctionLive && seller?._id && (
-                 <SellerRating sellerId={seller._id} refreshKey={ratingRefreshKey} />
+                 <SellerRatingSummary sellerId={seller._id} />
               )}
               {/* Show rating form when auction ended and current user is winner and has paid */}
               {auction?.status === 'ENDED' && isTopBidder && hasPaid && currentUser?._id && seller?._id && (
