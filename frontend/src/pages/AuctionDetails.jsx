@@ -234,6 +234,16 @@ function AuctionDetails() {
       return;
     }
 
+    const endTime = auction?.endTime || auction?.endsAt || auction?.end;
+    if (endTime) {
+      const end = new Date(endTime).getTime();
+      const now = Date.now();
+      if (now >= end) {
+        toast.error("This auction has ended and bidding is no longer allowed");
+        return;
+      }
+    }
+
     const currentPrice = auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice;
     const minInc = Number(auction?.minIncrement || 1);
     const minRequired = Number(currentPrice) + minInc;
@@ -265,6 +275,17 @@ function AuctionDetails() {
     if (!val || isNaN(val) || val <= 0) {
       toast.error("Please enter a valid maximum bid amount");
       return;
+    }
+
+    // Check if auction has ended based on end time
+    const endTime = auction?.endTime || auction?.endsAt || auction?.end;
+    if (endTime) {
+      const end = new Date(endTime).getTime();
+      const now = Date.now();
+      if (now >= end) {
+        toast.error("This auction has ended and auto-bidding is no longer allowed");
+        return;
+      }
     }
 
     const currentPrice = auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice;
@@ -301,6 +322,19 @@ function AuctionDetails() {
     if (!autoBidData?._id) {
       setShowAutoBidModal(true);
       return;
+    }
+
+    // Check if auction has ended based on end time when trying to activate
+    if (enabled) {
+      const endTime = auction?.endTime || auction?.endsAt || auction?.end;
+      if (endTime) {
+        const end = new Date(endTime).getTime();
+        const now = Date.now();
+        if (now >= end) {
+          toast.error("This auction has ended and auto-bidding is no longer allowed");
+          return;
+        }
+      }
     }
 
     try {
@@ -689,7 +723,13 @@ function AuctionDetails() {
                 <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{displaySellerName.slice(0,2).toUpperCase()}</div>
                 <div>
                   <button 
-                    onClick={() => navigate(`/seller/${seller._id}`)}
+                    onClick={() => {
+                      if (seller?._id && /^[0-9a-fA-F]{24}$/.test(seller._id)) {
+                        navigate(`/seller/${seller._id}`);
+                      } else {
+                        toast.error("Invalid seller information");
+                      }
+                    }}
                     className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
                   >
                     {displaySellerName}

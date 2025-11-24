@@ -30,6 +30,9 @@ import Settings from "./pages/AuctionSettings";
 import About from "./pages/About";
 import Help from "./pages/Help";
 import Feedback from "./pages/Feedback";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import CookiePolicy from "./pages/CookiePolicy";
 
 function App() {
   function ScrollToTop() {
@@ -82,6 +85,9 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/help" element={<Help />} />
         <Route path="/feedback" element={<Feedback />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/cookies" element={<CookiePolicy />} />
       </Routes>
       <Footer />
     </div>
