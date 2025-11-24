@@ -333,7 +333,14 @@ export default function MyBids() {
                     return (
                       <div
                         key={b._id || b.id || idx}
-                        className="border rounded-lg p-3 flex items-center gap-4 bg-white"
+                        className="border rounded-lg p-3 flex items-center gap-4 bg-white hover:shadow-md transition-shadow cursor-pointer"
+                        onClick={() =>
+                          navigate(
+                            `/auction/${
+                              auction._id || auction.id || b.auctionId
+                            }`
+                          )
+                        }
                       >
                         <div className="w-20 h-20 bg-gray-100 rounded overflow-hidden">
                           {auction.item?.images?.[0] ? (
@@ -400,13 +407,14 @@ export default function MyBids() {
                             </div>
                             <div className="flex items-center justify-end">
                               <button
-                                onClick={() =>
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   navigate(
                                     `/auction/${
                                       auction._id || auction.id || b.auctionId
                                     }`
-                                  )
-                                }
+                                  );
+                                }}
                                 className="px-3 py-2 bg-yellow-400 text-sm rounded font-medium hover:bg-yellow-500"
                               >
                                 Place Bid
