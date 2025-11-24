@@ -233,15 +233,21 @@ async function getAuctionById(req, res) {
 //GET /bidsphere/auctions
 async function listAuctions(req, res) {
   try {
-    const { status, category, search, page = 1, limit = 20, sort = "-createdAt" } = req.query;
+    // 1. Added 'condition' to the parameters
+    const { status, category, search, condition, page = 1, limit = 20, sort = "-createdAt" } = req.query;
 
-    const filter = { verified: true }; // Only show verified auctions to public
+    const filter = { verified: true }; 
     if (status) filter.status = status.toUpperCase();
     if (category) filter["item.category"] = category;
 
-    // If search is provided, perform a case-insensitive regex search across several fields
+    // 2. Added Condition Filter Logic
+    // This handles "Like New", "Like-New", or "like new" (case insensitive)
+    if (condition) {
+      const safeCond = String(condition).trim().replace(/-/g, "[ -]");
+      filter["item.condition"] = new RegExp(`^${safeCond}$`, "i");
+    }
+
     if (search && String(search).trim()) {
-      // escape regex special chars
       const esc = String(search).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const re = new RegExp(esc, "i");
       filter.$or = [
@@ -258,7 +264,8 @@ async function listAuctions(req, res) {
       .sort(sort)
       .skip(skip)
       .limit(Number(limit))
-      .select("title item.name item.images startTime endTime currentBid status startingPrice totalBids")
+      // 3. Added "item.condition" here so your frontend receives the data
+      .select("title item.name item.condition item.images startTime endTime currentBid status startingPrice totalBids")
       .populate("createdBy", "username")
       .lean();
 
