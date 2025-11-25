@@ -109,3 +109,8 @@ export const deleteFromCloudinary = async (publicId) => {
     throw new Error(error.message || "Failed to delete image from Cloudinary");
   }
 };
+
+export const __testables = {
+  sanitizeFilename,
+  buildPublicId,
+};

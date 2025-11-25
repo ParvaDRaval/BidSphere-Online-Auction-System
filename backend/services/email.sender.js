@@ -8,6 +8,7 @@ import { UPI_Selected_Email_Template } from "../email-templates/upi_email.templa
 import { Payment_Verified_Email_Template } from "../email-templates/paymentVerification_email.template.js"
 import { Payment_Rejection_Template } from "../email-templates/paymentRejection_email.template.js"
 import { PAYMENT_Verification_Request_Sent_Template } from "../email-templates/paymentVerifyRequest_email.template.js"
+import { Seller_Winner_Notification_Template } from "../email-templates/sellerNotification_email.template.js"
 import QRCode from "qrcode";
 import dotenv from "dotenv";
 dotenv.config();
