@@ -101,4 +101,8 @@ app.use("/bidsphere/auctions", paymentRoutes);
 import deliveryRoutes from "./routes/deliveryRoutes.js";
 app.use("/bidsphere/delivery", deliveryRoutes);
 
+// Rating Routes
+import ratingRoutes from './routes/ratingRoutes.js';
+app.use('/bidsphere/ratings', restrictToLoggedinUserOnly, ratingRoutes);
+
 export default app;

@@ -1,4 +1,3 @@
-import transporter  from "./email.transporter.js";
 import { Verification_Email_Template } from "../email-templates/verify_email.template.js"
 import { Welcome_Email_Template } from "../email-templates/welcome_email.template.js"
 import { Outbid_Email_Template } from "../email-templates/outbid_email.template.js"
@@ -206,11 +205,12 @@ const SendResetPwdEmail = async (email, resetPwdLink) => {
 //     }
 // };
 
-const SendAuctionWinnerEmail = async (email, name, auctionName) => {
+const SendAuctionWinnerEmail = async (email, name, auctionName, auctionId) => {
   try {
     const htmlContent = Auction_Winner_Email_Template
       .replace("{name}", name)
-      .replace("{auctionName}", auctionName);
+      .replace("{auctionName}", auctionName)
+      .replaceAll("{auctionId}", auctionId);
 
     const body = {
       sender: { email: process.env.BREVO_FROM_EMAIL },

@@ -1,16 +1,23 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { 
-  getAuction, 
-  placeBid, 
-  getCurrentUser, 
+import {
+  getAuction,
+  placeBid,
+  getCurrentUser,
   listPayments,
   setAutoBid,
   editAutoBid,
   activateAutoBid,
   deactivateAutoBid,
-  getUserAutoBid
+  getUserAutoBid,
+  addToWatchlist,
+  removeFromWatchlist,
+  getWatchlist,
 } from "../api";
+import { toast } from "react-toastify";
+import SellerRating from "./SellerRating";
+import SellerRatingSummary from "../components/SellerRatingSummary";
+import RatingForm from "./RatingForm";
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -35,6 +42,10 @@ function AuctionDetails() {
   const [autoBidData, setAutoBidData] = useState(null);
   const [autoBidLoading, setAutoBidLoading] = useState(false);
   const [showAutoBidModal, setShowAutoBidModal] = useState(false);
+  const [ratingRefreshKey, setRatingRefreshKey] = useState(0);
+  // watchlist state
+  const [watchlisted, setWatchlisted] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
   
   // User & payment
   const [currentUser, setCurrentUser] = useState(null);
@@ -54,6 +65,10 @@ function AuctionDetails() {
         const auctionData = res?.auction || res || null;
         setAuction(auctionData);
         setTopBids(res?.topBids || []);
+        // if backend returns a flag for in-watchlist, use it
+        if (res?.inWatchlist || auctionData?.inWatchlist) {
+          setWatchlisted(true);
+        }
       } catch (err) {
         console.error("getAuction error:", err);
         if (mounted) setError(err.message || "Failed to load auction");
@@ -80,6 +95,27 @@ function AuctionDetails() {
     })();
     return () => (mounted = false);
   }, []);
+
+  // Check if auction is in user's watchlist
+  useEffect(() => {
+    let mounted = true;
+    async function checkWatchlist() {
+      if (!id || !currentUser?._id) return;
+      try {
+        const res = await getWatchlist();
+        if (!mounted) return;
+        const watchlist = res?.watchlist || [];
+        const isWatchlisted = watchlist.some(
+          (item) => String(item.auctionId?._id || item.auctionId) === String(id)
+        );
+        setWatchlisted(isWatchlisted);
+      } catch (err) {
+        // ignore - user might not be logged in
+      }
+    }
+    checkWatchlist();
+    return () => (mounted = false);
+  }, [id, currentUser?._id]);
 
   // fetch current user and check payment status for this auction
   useEffect(() => {
@@ -194,8 +230,18 @@ function AuctionDetails() {
   const handlePlaceBid = async () => {
     const val = Number(bidAmount);
     if (!val || isNaN(val) || val <= 0) {
-      alert("Please enter a valid bid amount");
+      toast.error("Please enter a valid bid amount");
       return;
+    }
+
+    const endTime = auction?.endTime || auction?.endsAt || auction?.end;
+    if (endTime) {
+      const end = new Date(endTime).getTime();
+      const now = Date.now();
+      if (now >= end) {
+        toast.error("This auction has ended and bidding is no longer allowed");
+        return;
+      }
     }
 
     const currentPrice = auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice;
@@ -203,7 +249,7 @@ function AuctionDetails() {
     const minRequired = Number(currentPrice) + minInc;
     
     if (val < minRequired) {
-      alert(`Your bid must be at least ₹${minRequired} (current: ₹${currentPrice} + min increment: ₹${minInc})`);
+      toast.error(`Your bid must be at least ₹${minRequired} (current: ₹${currentPrice} + min increment: ₹${minInc})`);
       return;
     }
 
@@ -214,10 +260,10 @@ function AuctionDetails() {
       setAuction(res?.auction || res || auction);
       setTopBids(res?.topBids || []);
       setBidAmount("");
-      alert("Bid placed successfully!");
+      toast.success("Bid placed successfully!");
     } catch (err) {
       console.error("placeBid error:", err);
-      alert(err?.message || "Failed to place bid");
+      toast.error(err?.message || "Failed to place bid");
     } finally {
       setPlacingBid(false);
     }
@@ -227,8 +273,19 @@ function AuctionDetails() {
   const handleSetupAutoBid = async () => {
     const val = Number(autoBidAmount);
     if (!val || isNaN(val) || val <= 0) {
-      alert("Please enter a valid maximum bid amount");
+      toast.error("Please enter a valid maximum bid amount");
       return;
+    }
+
+    // Check if auction has ended based on end time
+    const endTime = auction?.endTime || auction?.endsAt || auction?.end;
+    if (endTime) {
+      const end = new Date(endTime).getTime();
+      const now = Date.now();
+      if (now >= end) {
+        toast.error("This auction has ended and auto-bidding is no longer allowed");
+        return;
+      }
     }
 
     const currentPrice = auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice;
@@ -236,7 +293,7 @@ function AuctionDetails() {
     const minRequired = Number(currentPrice) + minInc;
     
     if (val < minRequired) {
-      alert(`Your maximum bid must be at least ₹${minRequired}`);
+      toast.error(`Your maximum bid must be at least ₹${minRequired}`);
       return;
     }
 
@@ -244,17 +301,17 @@ function AuctionDetails() {
       setAutoBidLoading(true);
       if (autoBidData?._id) {
         await editAutoBid(auction._id, autoBidData._id, val);
-        alert("Auto-bid limit updated!");
+        toast.success("Auto-bid limit updated!");
         setAutoBidData({ ...autoBidData, maxLimit: val });
       } else {
         const result = await setAutoBid(auction._id, val);
         setAutoBidData(result);
-        alert("Auto-bid created successfully!");
+        toast.success("Auto-bid created successfully!");
       }
       setShowAutoBidModal(false);
     } catch (err) {
       console.error("handleSetupAutoBid error:", err);
-      alert(err?.message || "Failed to set up auto-bid");
+      toast.error(err?.message || "Failed to set up auto-bid");
     } finally {
       setAutoBidLoading(false);
     }
@@ -267,23 +324,85 @@ function AuctionDetails() {
       return;
     }
 
+    // Check if auction has ended based on end time when trying to activate
+    if (enabled) {
+      const endTime = auction?.endTime || auction?.endsAt || auction?.end;
+      if (endTime) {
+        const end = new Date(endTime).getTime();
+        const now = Date.now();
+        if (now >= end) {
+          toast.error("This auction has ended and auto-bidding is no longer allowed");
+          return;
+        }
+      }
+    }
+
     try {
       setAutoBidLoading(true);
       if (enabled) {
         await activateAutoBid(auction._id, autoBidData._id);
         setAutoBidEnabled(true);
-        alert("Auto-bid activated!");
+        toast.success("Auto-bid activated!");
       } else {
         await deactivateAutoBid(auction._id, autoBidData._id);
         setAutoBidEnabled(false);
-        alert("Auto-bid deactivated");
+        toast.success("Auto-bid deactivated");
       }
     } catch (err) {
       console.error("handleToggleAutoBid error:", err);
-      alert(err?.message || "Failed to toggle auto-bid");
+      toast.error(err?.message || "Failed to toggle auto-bid");
       setAutoBidEnabled(!enabled);
     } finally {
       setAutoBidLoading(false);
+    }
+  };
+
+  // Share auction: use Web Share API when available, else copy link to clipboard or open mailto as fallback
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: auction?.title || 'Auction', url });
+        toast.success('Shared successfully');
+        return;
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast.success('Auction link copied to clipboard');
+        return;
+      }
+
+      // Fallback: open mail client with link
+      window.open(`mailto:?subject=${encodeURIComponent('Check out this auction')}&body=${encodeURIComponent(url)}`);
+      toast.info('Opened mail client to share link');
+    } catch (err) {
+      console.error('share error:', err);
+      toast.error('Failed to share the auction');
+    }
+  };
+
+  // Report auction: open mail client with a pre-filled report template
+  const handleReport = () => {
+    try {
+      const subject = `Report: ${auction?.title || auction?._id || 'Auction'}`;
+      const bodyLines = [
+        'I would like to report the following auction on BidSphere.',
+        '',
+        `Auction ID: ${auction?._id || ''}`,
+        `Title: ${auction?.title || ''}`,
+        `Seller: ${displaySellerName || ''}`,
+        `URL: ${window.location.href}`,
+        '',
+        'Reason (please describe):',
+        '\n',
+      ];
+      const mailto = `mailto:report@bidsphere.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+      window.location.href = mailto;
+      toast.info('Opening mail client to report the auction');
+    } catch (err) {
+      console.error('report mailto error:', err);
+      toast.error('Unable to open mail client for reporting');
     }
   };
 
@@ -314,13 +433,29 @@ function AuctionDetails() {
   const images = auction?.item?.images || [];
   const seller = auction?.createdBy;
   const displaySellerName = seller?.username || seller?.name || (seller?.email ? seller.email.split("@")[0] : "Unknown");
-  const currentPrice = auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice;
+  // Prefer topBids[0] amount when available (reflects highest bid), otherwise fall back to auction.currentBid or startingPrice
+  const currentPrice = (topBids && topBids[0] && (topBids[0].amount || topBids[0].price))
+    || (auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice);
+  const displayCurrentPrice = currentPrice != null ? Number(currentPrice).toLocaleString() : '-';
   const isSeller = currentUser?._id && seller?._id && currentUser._id.toString() === seller._id.toString();
   const isAuctionLive = auction?.status === "LIVE";
+  const isAuctionEnded = auction?.status === 'ENDED';
+  // determine top bidder (may be stored in auction.auctionWinner or topBids[0])
+  const topBidderId = (
+    (auction && (auction.auctionWinner || auction.currentWinner)) ||
+    (topBids && topBids[0] && (topBids[0].userId?._id || topBids[0].userId || topBids[0].bidderId?._id || topBids[0].bidderId)) ||
+    null
+  );
+  const isTopBidder = currentUser?._id && topBidderId && String(currentUser._id) === String(topBidderId);
+
+  // Highest/final bid to display when auction ended
+  const highestBid = auction?.status === 'ENDED'
+    ? (topBids && topBids[0] && (topBids[0].amount || topBids[0].price)) || auction?.currentBid || auction?.finalPrice || null
+    : null;
 
   // If user has not paid registration fee and is not the seller, show pre-payment landing page
   // Ensure sellers never see the registration/pay UI
-  if (!hasPaid && (!currentUser || !isSeller)) {
+  if (!hasPaid && (!currentUser || !isSeller) && !(auction?.status === 'ENDED' && isTopBidder)) {
     return (
       <div className="p-6 bg-[#f7f5f0] min-h-screen">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -384,6 +519,11 @@ function AuctionDetails() {
                 <div className="text-xs text-gray-600 mt-2">Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}</div>
               </div>
 
+              {/* Show seller rating before payment so users can evaluate seller */}
+              {seller?._id && (
+                <SellerRatingSummary sellerId={seller._id} />
+              )}
+
               <div className="bg-white p-4 rounded-lg border">
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="bg-gray-50 p-3 rounded">
@@ -392,7 +532,7 @@ function AuctionDetails() {
                   </div>
                   <div className="bg-gray-50 p-3 rounded">
                     <div className="text-xs text-gray-500">Current Bid</div>
-                    <div className="font-semibold text-green-700">₹{currentPrice ?? '-'}</div>
+                    <div className="font-semibold text-green-700">₹{displayCurrentPrice}</div>
                   </div>
                 </div>
 
@@ -401,21 +541,63 @@ function AuctionDetails() {
                   <div>Auction Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : '—'}</div>
                 </div>
 
-                <button onClick={() => navigate(`/registration-fee/${auction._id}`)} className="w-full mb-2 bg-blue-600 text-white py-3 rounded font-semibold">
-                  Pay Token Fee • ₹{Math.round((auction?.startingPrice || 0) * 0.01) || 0}
+                <button
+                  onClick={() => navigate(`/registration-fee/${auction._id}`)}
+                  className={`w-full mb-2 py-3 rounded font-semibold ${isAuctionEnded || isSeller ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-600 text-white'}`}
+                  disabled={isAuctionEnded || isSeller}
+                >
+                  {isAuctionEnded ? 'Auction Ended' : `Pay Token Fee • ₹${Math.round((auction?.startingPrice || 0) * 0.01) || 0}`}
                 </button>
 
                 <button disabled className="w-full mb-2 bg-yellow-400 text-black py-3 rounded font-semibold opacity-60">
-                  Place Bid • ₹{currentPrice ?? '-'}
+                  Place Bid • ₹{displayCurrentPrice}
                 </button>
 
-                <button className="w-full mb-2 bg-gray-100 text-gray-800 py-2 rounded">Add to Watchlist</button>
+                
+                <button
+                  onClick={async () => {
+                    if (watchlistLoading) return;
+                    setWatchlistLoading(true);
+                    try {
+                      if (!watchlisted) {
+                        await addToWatchlist(auction._id);
+                        // optimistic update
+                        setAuction((a) => ({ ...a, watching: (a?.watching || 0) + 1 }));
+                        setWatchlisted(true);
+                        toast.success("Added to watchlist");
+                      } else {
+                        await removeFromWatchlist(auction._id);
+                        setAuction((a) => ({ ...a, watching: Math.max(0, (a?.watching || 1) - 1) }));
+                        setWatchlisted(false);
+                        toast.info("Removed from watchlist");
+                      }
+                    } catch (err) {
+                      console.error("watchlist error:", err);
+                      toast.error(err?.message || "Failed to update watchlist");
+                    } finally {
+                      setWatchlistLoading(false);
+                    }
+                  }}
+                  className={`w-full mb-2 py-2 rounded font-semibold ${watchlisted ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}
+                  disabled={watchlistLoading || isAuctionEnded}
+                >
+                  {watchlistLoading ? (watchlisted ? 'Removing...' : 'Adding...') : (watchlisted ? 'Remove from Watchlist' : 'Add to Watchlist')}
+                </button>
 
                 <div className="flex gap-2 mt-2">
-                  <button className="flex-1 py-2 border rounded">Share</button>
-                  <button className="flex-1 py-2 border rounded">Report</button>
+                  <button onClick={handleShare} className="flex-1 py-2 border rounded">Share</button>
+                  <button onClick={handleReport} className="flex-1 py-2 border rounded">Report</button>
                 </div>
               </div>
+
+              {/* If auction ended and current user is top bidder and hasn't paid, show Pay Fees button */}
+              {auction?.status === 'ENDED' && isTopBidder && !hasPaid && (
+                <div className="mt-4">
+                  <button onClick={() => navigate(`/auction/${auction._id}/pay`)} className="w-full mb-2 bg-green-600 text-white py-3 rounded font-semibold">
+                      Pay Fees Now {currentPrice ? <span className="font-medium">• ₹{displayCurrentPrice}</span> : null}
+                  </button>
+                </div>
+              )}
 
               <div className="bg-white p-4 rounded-lg shadow">
                 <h4 className="font-semibold mb-2">Live Auction Activity</h4>
@@ -451,6 +633,9 @@ function AuctionDetails() {
                 <div className="text-xs text-gray-500 mt-1">
                   Created: {new Date(auction.createdAt).toLocaleString()}
                 </div>
+                {auction?.status === 'ENDED' && highestBid != null && (
+                  <div className="mt-2 text-lg font-semibold text-gray-800">Final Price: ₹{highestBid}</div>
+                )}
               </div>
               <div>
                 <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
@@ -537,11 +722,68 @@ function AuctionDetails() {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{displaySellerName.slice(0,2).toUpperCase()}</div>
                 <div>
-                  <div className="text-sm font-medium">{displaySellerName}</div>
+                  <button 
+                    onClick={() => {
+                      if (seller?._id && /^[0-9a-fA-F]{24}$/.test(seller._id)) {
+                        navigate(`/seller/${seller._id}`);
+                      } else {
+                        toast.error("Invalid seller information");
+                      }
+                    }}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    {displaySellerName}
+                  </button>
                   <div className="text-xs text-gray-500">Verified Seller</div>
                 </div>
               </div>
+              {isAuctionLive && seller?._id && (
+                 <SellerRatingSummary sellerId={seller._id} />
+              )}
+              {/* Show rating form when auction ended and current user is winner and has paid */}
+              {auction?.status === 'ENDED' && isTopBidder && hasPaid && currentUser?._id && seller?._id && (
+                <RatingForm
+                  auctionId={auction._id}
+                  sellerId={seller._id}
+                  raterId={currentUser._id}
+                  onSubmitted={async () => {
+                    // refresh seller rating display
+                    setRatingRefreshKey((k) => k + 1);
+                  }}
+                />
+              )}
             </div>
+
+            {/* Winner Info - Show when auction ended */}
+            {auction?.status === 'ENDED' && topBidderId && topBids && topBids[0] && (
+              <div className="bg-white p-4 rounded-lg border shadow">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🏆</span>
+                  <div className="text-sm font-semibold text-gray-700">AUCTION WINNER</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-lg overflow-hidden">
+                    {topBids[0].userId?.profilePhoto ? (
+                      <img 
+                        src={topBids[0].userId.profilePhoto} 
+                        alt={topBids[0].userId?.username || 'Winner'} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>{(topBids[0].userId?.username || topBids[0].userId?.name || 'W').slice(0,2).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">
+                      {topBids[0].userId?.username || topBids[0].userId?.name || topBids[0].userId?.email?.split('@')[0] || 'Winner'}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Winning Bid: ₹{(highestBid || topBids[0].amount || 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Countdown Timer */}
             <div className="bg-yellow-100 p-4 rounded-lg shadow">
@@ -578,7 +820,7 @@ function AuctionDetails() {
                 <div className="bg-gray-50 p-3 rounded mb-4 flex justify-between items-center">
                   <div>
                     <div className="text-xs text-gray-600 mb-1">Current Highest Bid</div>
-                    <div className="text-xl font-bold text-gray-900">₹{currentPrice ?? "-"}</div>
+                    <div className="text-xl font-bold text-gray-900">₹{displayCurrentPrice}</div>
                   </div>
                   <div className="text-xs text-green-600 font-medium">Reserve price met</div>
                 </div>
@@ -608,6 +850,44 @@ function AuctionDetails() {
                     disabled={!isAuctionLive || placingBid || autoBidEnabled || isSeller}
                   >
                     {placingBid ? "Placing..." : bidAmount ? `Place Bid - ₹${bidAmount}` : "Place Bid"}
+                  </button>
+
+                  {/* Watchlist Button */}
+                  <button
+                    onClick={async () => {
+                      if (watchlistLoading) return;
+                      setWatchlistLoading(true);
+                      try {
+                        if (!watchlisted) {
+                          await addToWatchlist(auction._id);
+                          setAuction((a) => ({ ...a, watching: (a?.watching || 0) + 1 }));
+                          setWatchlisted(true);
+                          toast.success("Added to watchlist");
+                        } else {
+                          await removeFromWatchlist(auction._id);
+                          setAuction((a) => ({ ...a, watching: Math.max(0, (a?.watching || 1) - 1) }));
+                          setWatchlisted(false);
+                          toast.info("Removed from watchlist");
+                        }
+                      } catch (err) {
+                        console.error("watchlist error:", err);
+                        toast.error(err?.message || "Failed to update watchlist");
+                      } finally {
+                        setWatchlistLoading(false);
+                      }
+                    }}
+                    className={`w-full mt-2 py-2 rounded font-semibold transition ${
+                      watchlisted 
+                        ? 'bg-red-100 text-red-800 hover:bg-red-200' 
+                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                    }`}
+                    disabled={watchlistLoading}
+                  >
+                    {watchlistLoading ? (
+                      watchlisted ? 'Removing...' : 'Adding...'
+                    ) : (
+                      watchlisted ? '❤️ Remove from Watchlist' : '🤍 Add to Watchlist'
+                    )}
                   </button>
 
                   {/* Status Messages */}
@@ -652,7 +932,7 @@ function AuctionDetails() {
                         onChange={(e) => handleToggleAutoBid(e.target.checked)}
                         disabled={autoBidLoading}
                       />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
                   </div>
 
@@ -672,9 +952,47 @@ function AuctionDetails() {
 
             {isSeller && (
               <div className="bg-white p-4 rounded-lg shadow">
-                <div className="text-center text-gray-600">
+                <div className="text-center text-gray-600 mb-3">
                   <p className="text-sm">You are the seller of this auction</p>
                 </div>
+                
+                {/* Watchlist button for sellers viewing other auctions */}
+                <button
+                  onClick={async () => {
+                    if (watchlistLoading) return;
+                    setWatchlistLoading(true);
+                    try {
+                      if (!watchlisted) {
+                        await addToWatchlist(auction._id);
+                        setAuction((a) => ({ ...a, watching: (a?.watching || 0) + 1 }));
+                        setWatchlisted(true);
+                        toast.success("Added to watchlist");
+                      } else {
+                        await removeFromWatchlist(auction._id);
+                        setAuction((a) => ({ ...a, watching: Math.max(0, (a?.watching || 1) - 1) }));
+                        setWatchlisted(false);
+                        toast.info("Removed from watchlist");
+                      }
+                    } catch (err) {
+                      console.error("watchlist error:", err);
+                      toast.error(err?.message || "Failed to update watchlist");
+                    } finally {
+                      setWatchlistLoading(false);
+                    }
+                  }}
+                  className={`w-full py-2 rounded font-semibold transition ${
+                    watchlisted 
+                      ? 'bg-red-100 text-red-800 hover:bg-red-200' 
+                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                  }`}
+                  disabled={watchlistLoading}
+                >
+                  {watchlistLoading ? (
+                    watchlisted ? 'Removing...' : 'Adding...'
+                  ) : (
+                    watchlisted ? '❤️ Remove from Watchlist' : '🤍 Add to Watchlist'
+                  )}
+                </button>
               </div>
             )}
 
@@ -779,7 +1097,7 @@ function AuctionDetails() {
                 onChange={(e) => setAutoBidAmount(e.target.value)}
               />
               <div className="text-xs text-gray-500 mt-2">
-                Current: ₹{currentPrice} • Min increment: ₹{auction?.minIncrement || 1}
+                Current: ₹{displayCurrentPrice} • Min increment: ₹{auction?.minIncrement || 1}
               </div>
             </div>
 

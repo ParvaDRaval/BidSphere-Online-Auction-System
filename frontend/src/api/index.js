@@ -126,10 +126,13 @@ export const getCategories = async (opts = {}) => {
 
 // User endpoints
 export const getCurrentUser = () => getJSON(`${BASE_USER}/me`);
+export const getUserById = (userId) => getJSON(`${BASE_USER}/${userId}`);
 export const getWatchlist = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_USER}/watchlist${qs ? `?${qs}` : ""}`);
 };
+export const addToWatchlist = (auctionId) => postJSON(`${BASE_USER}/watchlist`, { auctionId });
+export const removeFromWatchlist = (auctionId) => del(`${BASE_USER}/watchlist/${auctionId}`);
 export const getBiddingHistory = (params = {}) => {
   const qs = new URLSearchParams(params).toString();
   return getJSON(`${BASE_USER}/bidding-history${qs ? `?${qs}` : ""}`);
@@ -178,6 +181,16 @@ export const verifyAuctionPayment = (auctionId, paymentId, payload) => postJSON(
 // Winning payment endpoints (final payment by winner)
 export const createWinningCodPayment = (auctionId) => postJSON(`${BASE_AUCTION}/${auctionId}/finalpay/cod`, {});
 export const createWinningUpiPayment = (auctionId) => postJSON(`${BASE_AUCTION}/${auctionId}/finalpay/upi`, {});
+// Delivery endpoint (save buyer delivery address after payment)
+export const createDelivery = (payload) => postJSON(`${API_BASE_URL}/bidsphere/delivery/create`, payload);
+export const getMyDeliveries = () => getJSON(`${API_BASE_URL}/bidsphere/delivery/my-deliveries`);
+export const getAllDeliveries = (queryParams = {}) => {
+  const qs = new URLSearchParams(queryParams).toString();
+  return getJSON(`${API_BASE_URL}/bidsphere/delivery/all${qs ? `?${qs}` : ''}`);
+};
+export const getMyPayments = () => getJSON(`${BASE_USER}/payments`);
+// Get payment status (used by frontend to detect admin confirmation)
+export const getPayment = (auctionId, paymentId) => getJSON(`${BASE_AUCTION}/${auctionId}/payment/${paymentId}`);
 // legacy/admin verify kept for compatibility
 export const listPayments = (queryParams = {}) => {
   const params = new URLSearchParams(queryParams).toString();
@@ -186,3 +199,27 @@ export const listPayments = (queryParams = {}) => {
 
 export const requestPasswordReset = (payload) => postJSON(`${BASE_USER}/forgetpwd`, payload);
 export const resetPassword = (payload) => postJSON(`${BASE_USER}/resetpwd`, payload);
+
+export async function updateUserProfile(profileData) {
+  const response = await fetch(`${BASE_USER}/profile`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(profileData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: "Request failed" }));
+    throw new Error(error.message || "Failed to update profile");
+  }
+
+  return response.json();
+}
+
+// Ratings
+export const getSellerRatings = (sellerId) => getJSON(`${API_BASE_URL}/bidsphere/ratings/seller/${sellerId}`);
+export const rateSeller = (payload) => postJSON(`${API_BASE_URL}/bidsphere/ratings`, payload);
+export const updateRating = (ratingId, payload) => putJSON(`${API_BASE_URL}/bidsphere/ratings/${ratingId}`, payload);
+export const deleteRating = (ratingId) => del(`${API_BASE_URL}/bidsphere/ratings/${ratingId}`);

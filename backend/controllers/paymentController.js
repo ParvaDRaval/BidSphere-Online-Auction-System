@@ -29,8 +29,8 @@ export const handleRegistrationPayment = async (req, res) => {
     const isRegistrationOpen = process.env.REGISTRATION_OPEN === "true";
 
     if (auction.status === "LIVE" || (auction.status === "UPCOMING" && isRegistrationOpen)) {
-      
-      const registrationFees = 0.01 * auction.startingPrice; // 1% of startingPrice
+
+      const registrationFees = Math.max(0.01 * auction.startingPrice, 1); // Minimum of 1% of startingPrice or 1 rupee
 
       const upiLink = await generateUpiLink(auctionId, registrationFees);
       
@@ -223,5 +223,29 @@ export const verifyPayment = async (req, res) => {
     return res.status(200).json({ success: true, message: "Your payment verification request sent"});
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+};
+
+export const getPaymentById = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const payment = await Payment.findById(paymentId).lean();
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    return res.status(200).json({ success: true, payment });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const getMyPayments = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) return res.status(401).json({ success: false, payments: [] });
+
+    const payments = await Payment.find({ userId: userId, type: 'WINNING PAYMENT' }).lean();
+    return res.status(200).json({ success: true, payments });
+  } catch (err) {
+    console.error('getMyPayments error:', err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };

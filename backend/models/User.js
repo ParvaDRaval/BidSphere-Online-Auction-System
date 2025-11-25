@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
     fullname:{
         type: String,
-        required: true
     },
     username: { 
         type: String, 
@@ -20,7 +19,6 @@ const userSchema = new mongoose.Schema({
     },
     bio: {
         type: String,
-        required: true,
     },
     address: {
       type: {
@@ -30,12 +28,10 @@ const userSchema = new mongoose.Schema({
         postalCode: { type: String },
         country: { type: String }
       },
-      required: true,
       default: null
     },
     profilePhoto:{
         type : String,
-        required: true
     },
     isVerified: { 
         type: Boolean, 
@@ -54,5 +50,11 @@ const userSchema = new mongoose.Schema({
 },{timestamps: true});
 
 const User = mongoose.model('user', userSchema);
+
+try {
+    mongoose.model("User");
+} catch {
+    mongoose.model("User", userSchema);
+}
 
 export default User;

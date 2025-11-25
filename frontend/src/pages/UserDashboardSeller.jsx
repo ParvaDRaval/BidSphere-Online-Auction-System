@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { getCurrentUser, getMyAuctions, deleteAuction } from "../api";
+import { toast } from "react-toastify";
 
-function StatCard({ title, value, small }) {
+function StatCard({ title, value, small, onClick }) {
   return (
-    <div className="bg-white border rounded-lg p-4 flex flex-col justify-between">
+    <div
+      onClick={onClick}
+      className={`bg-white border rounded-lg p-4 flex flex-col justify-between ${onClick ? 'cursor-pointer hover:shadow' : ''}`}
+    >
       <div className="text-xs text-gray-500">{title}</div>
       <div className={`mt-2 ${small ? "text-xl" : "text-2xl"} font-semibold text-gray-800`}>{value}</div>
     </div>
@@ -14,27 +18,65 @@ function StatCard({ title, value, small }) {
 import { getStatusColor, getStatusLabel } from "../utils/statusHelpers";
 
 function ListingCard({ id, title = "Auction Name", starting = "₹250", status = "Live", bidders = 0, endsIn = "2h 15m", onDelete, deleting }) {
+  const navigate = useNavigate();
+  const handleEdit = () => {
+    const path = id ? `/edit-auction-draft/${id}` : "/create-auction";
+    navigate(path);
+  };
+
   return (
     <div className="bg-white border rounded-md p-4 flex items-center gap-4">
-      <div className="w-24 h-16 bg-gray-100 rounded" />
-      <div className="flex-1">
-        <div className="flex items-center justify-between">
-          <div className="font-medium">{title}</div>
-          <div>
-            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(status)}`}>
-              {getStatusLabel(status)}
-            </span>
+      {id ? (
+        <Link to={`/auction/${id}`} className="flex-1 flex items-center gap-4 no-underline text-inherit">
+          <div className="w-24 h-16 bg-gray-100 rounded" />
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div className="font-medium">{title}</div>
+              <div>
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(status)}`}>
+                  {getStatusLabel(status)}
+                </span>
+              </div>
+            </div>
+            <div className="text-sm text-gray-500 mt-1">Starting bid <span className="font-semibold text-gray-800">{starting}</span></div>
+            <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
+              <div>Bidders: <span className="font-medium text-gray-700">{bidders}</span></div>
+              <div>Ends in: <span className="font-medium text-gray-700">{endsIn}</span></div>
+            </div>
+          </div>
+        </Link>
+      ) : (
+        <div className="flex-1 flex items-center gap-4">
+          <div className="w-24 h-16 bg-gray-100 rounded" />
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div className="font-medium">{title}</div>
+              <div>
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(status)}`}>
+                  {getStatusLabel(status)}
+                </span>
+              </div>
+            </div>
+            <div className="text-sm text-gray-500 mt-1">Starting bid <span className="font-semibold text-gray-800">{starting}</span></div>
+            <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
+              <div>Bidders: <span className="font-medium text-gray-700">{bidders}</span></div>
+              <div>Ends in: <span className="font-medium text-gray-700">{endsIn}</span></div>
+            </div>
           </div>
         </div>
-        <div className="text-sm text-gray-500 mt-1">Starting bid <span className="font-semibold text-gray-800">{starting}</span></div>
-        <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
-          <div>Bidders: <span className="font-medium text-gray-700">{bidders}</span></div>
-          <div>Ends in: <span className="font-medium text-gray-700">{endsIn}</span></div>
-        </div>
-      </div>
+      )}
       <div className="flex flex-col items-end gap-2">
-        <Link to={id ? `/edit-auction-draft/${id}` : "/create-auction"} className="text-xs text-blue-600">Edit</Link>
-        <button onClick={() => onDelete && onDelete(id)} disabled={deleting} className="text-xs text-red-600">
+        <button
+          onClick={handleEdit}
+          className="px-3 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium hover:bg-blue-100"
+        >
+          Edit
+        </button>
+        <button
+          onClick={() => onDelete && onDelete(id)}
+          disabled={deleting}
+          className="px-3 py-1 bg-red-50 text-red-700 rounded text-xs font-medium hover:bg-red-100 disabled:opacity-60"
+        >
           {deleting ? "Deleting..." : "Delete"}
         </button>
       </div>
@@ -42,7 +84,7 @@ function ListingCard({ id, title = "Auction Name", starting = "₹250", status =
   );
 }
 
-export default function UserDashboard() {
+export default function UserDashboardSeller() {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -69,6 +111,8 @@ export default function UserDashboard() {
 
   const [auctions, setAuctions] = useState([]);
   const [loadingAuctions, setLoadingAuctions] = useState(false);
+  const [filterStatus, setFilterStatus] = useState(null);
+  const listingsRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -135,16 +179,20 @@ export default function UserDashboard() {
             <ul className="space-y-2 text-sm">
               <li><Link to="/dashboard" className="block py-2 px-3 rounded bg-blue-50 font-medium">Dashboard</Link></li>
               <li><Link to="/my-listings" className="block py-2 px-3 rounded hover:bg-gray-50">My Listings</Link></li>
-              <li><Link to="/earnings" className="block py-2 px-3 rounded hover:bg-gray-50">Earnings</Link></li>
-              <li><Link to="/history" className="block py-2 px-3 rounded hover:bg-gray-50">History</Link></li>
+              <li>
+                <button
+                  onClick={() => {
+                    setFilterStatus('ENDED');
+                    setTimeout(() => listingsRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+                  }}
+                  className="w-full text-left py-2 px-3 rounded hover:bg-gray-50"
+                >
+                  Earnings
+                </button>
+              </li>
               <li><Link to="/settings" className="block py-2 px-3 rounded hover:bg-gray-50">Settings</Link></li>
             </ul>
           </nav>
-
-          <div className="mt-6 text-xs text-gray-500">
-            <div>Success Rate</div>
-            <div className="mt-1 font-semibold text-gray-800">89%</div>
-          </div>
         </aside>
 
         {/* Main */}
@@ -152,23 +200,37 @@ export default function UserDashboard() {
           {/* Top stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard title="Active Listing" value={<><span className="text-2xl">{activeListingCount}</span><div className="text-xs text-gray-500">{totalListings} total</div></>} />
-            <StatCard title="Total Earnings" value={<><span className="text-2xl">₹{totalEarnings}</span><div className="text-xs text-gray-500">Calculated from ended auctions</div></>} small />
+            <StatCard
+              title="Total Earnings"
+              value={<><span className="text-2xl">₹{totalEarnings}</span><div className="text-xs text-gray-500">Calculated from ended auctions</div></>}
+              small
+              onClick={() => {
+                setFilterStatus('ENDED');
+                // scroll to listings
+                setTimeout(() => listingsRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+              }}
+            />
             <StatCard title="Active Bidders" value={<><span className="text-2xl">{activeBidders}</span><div className="text-xs text-gray-500">Total participants</div></>} small />
             <StatCard title="Success Rate" value={<><span className="text-2xl">{successRate}%</span><div className="text-xs text-gray-500">Based on ended auctions</div></>} small />
           </div>
 
           {/* My Listings */}
-          <div className="bg-white border rounded-lg p-6">
+          <div className="bg-white border rounded-lg p-6" ref={listingsRef}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">My Listings</h2>
-              <div className="text-sm text-blue-600"><Link to="/my-listings">View All Listings</Link></div>
+              <h2 className="text-lg font-semibold">{filterStatus ? (filterStatus === 'ENDED' ? 'Ended Listings' : `${filterStatus} Listings`) : 'My Listings'}</h2>
+              <div className="flex items-center gap-4">
+                {filterStatus && (
+                  <button onClick={() => setFilterStatus(null)} className="text-sm text-gray-600 hover:underline">Clear Filter</button>
+                )}
+                <div className="text-sm text-blue-600"><Link to="/my-listings">View All Listings</Link></div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
               {loadingAuctions ? (
                 <div>Loading your listings...</div>
-              ) : auctions.length > 0 ? (
-                auctions.map((a) => (
+              ) : (filterStatus ? auctions.filter(x => x.status === filterStatus) : auctions).length > 0 ? (
+                (filterStatus ? auctions.filter(x => x.status === filterStatus) : auctions).map((a) => (
                   <ListingCard
                     key={a._id}
                     id={a._id}
@@ -183,9 +245,10 @@ export default function UserDashboard() {
                         setDeletingId(id);
                         await deleteAuction(id);
                         setAuctions((prev) => prev.filter((x) => x._id !== id));
+                        toast.success("Auction deleted");
                       } catch (err) {
                         console.error("deleteAuction error:", err);
-                        alert(err?.message || "Failed to delete auction");
+                        toast.error(err?.message || "Failed to delete auction");
                       } finally {
                         setDeletingId(null);
                       }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import {
   getAllAuctionsAdmin,
   getAuctionDetailsAdmin,
@@ -7,6 +8,7 @@ import {
   getAdminNotifications,
   confirmAdminNotification,
   rejectAdminNotification,
+  getAllDeliveries,
 } from "../api";
 
 function AdminDashboard() {
@@ -20,7 +22,12 @@ function AdminDashboard() {
   const [removingId, setRemovingId] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(false);
-  const [notifProcessingId, setNotifProcessingId] = useState(null);
+  const [deliveries, setDeliveries] = useState([]);
+  const [deliverLoading, setDeliverLoading] = useState(false);
+  const [deliverError, setDeliverError] = useState(null);
+  const [showDeliveries, setShowDeliveries] = useState(false);
+  // store the processing payment id (not notification id) to avoid duplicate actions for same payment
+  const [notifProcessingPaymentId, setNotifProcessingPaymentId] = useState(null);
   const [showNotifs, setShowNotifs] = useState(false);
 
   useEffect(() => {
@@ -55,7 +62,24 @@ function AdminDashboard() {
       try {
         const res = await getAdminNotifications();
         if (!mounted) return;
-        setNotifications(res?.notifications || res || []);
+        const raw = res?.notifications || res || [];
+        // filter out notifications whose payment is in a terminal state
+        const terminalStates = new Set(["SUCCESS", "FAILED", "REJECTED", "CANCELLED", "REMOVED", "DECLINED"]);
+        const active = (raw || []).filter((n) => {
+          const st = (n?.payment?.status || n?.status || "").toString().toUpperCase();
+          if (!st) return true;
+          return !terminalStates.has(st);
+        });
+        // dedupe by payment id (or fallback to notification id)
+        const seen = new Set();
+        const dedup = [];
+        for (const n of active) {
+          const pid = n?.payment?._id || n?.paymentId || n?._id;
+          if (seen.has(pid)) continue;
+          seen.add(pid);
+          dedup.push(n);
+        }
+        setNotifications(dedup);
       } catch (err) {
         console.error("loadNotifications error:", err);
       } finally {
@@ -82,9 +106,9 @@ function AdminDashboard() {
         setSelectedAuction(res.auction);
       }
 
-      alert(res.message || "Auction verified successfully. Status changed to UPCOMING/LIVE.");
+      toast.success(res.message || "Auction verified successfully. Status changed to UPCOMING/LIVE.");
     } catch (err) {
-      alert(err.message || "Failed to verify auction");
+      toast.error(err.message || "Failed to verify auction");
     } finally {
       setVerifyingId(null);
     }
@@ -95,14 +119,17 @@ function AdminDashboard() {
     setSelectedAuction({ _id: auctionId });
     try {
       const res = await getAuctionDetailsAdmin(auctionId);
-      setSelectedAuction((prev) => (prev && prev._id === auctionId ? res.auction : prev));
+      const auc = res.auction;
+      setSelectedAuction((prev) => (prev && prev._id === auctionId ? auc : prev));
     } catch (err) {
-      alert(err.message || "Failed to load auction details");
+      toast.error(err.message || "Failed to load auction details");
       setSelectedAuction((prev) => (prev && prev._id === auctionId ? null : prev));
     } finally {
       setDetailLoading(false);
     }
   };
+
+  
 
   const handleRemove = async (auctionId) => {
     if (!window.confirm("Are you sure you want to remove this auction? This will hide it from all users.")) return;
@@ -118,9 +145,9 @@ function AdminDashboard() {
         setSelectedAuction(res.auction);
       }
 
-      alert(res.message || "Auction removed successfully.");
+      toast.success(res.message || "Auction removed successfully.");
     } catch (err) {
-      alert(err.message || "Failed to remove auction");
+      toast.error(err.message || "Failed to remove auction");
     } finally {
       setRemovingId(null);
     }
@@ -129,31 +156,37 @@ function AdminDashboard() {
   // notification handlers
   const handleConfirmNotification = async (notifId) => {
     if (!window.confirm("Confirm this payment and register the bidder?")) return;
-    setNotifProcessingId(notifId);
+    const notif = notifications.find((n) => n._id === notifId);
+    const pid = notif?.payment?._id || notif?.paymentId || notifId;
+    setNotifProcessingPaymentId(pid);
     try {
       await confirmAdminNotification(notifId);
-      setNotifications((prev) => prev.filter((n) => n._id !== notifId));
-      alert("Payment confirmed and bidder registered.");
+      // remove any notifications that reference the same payment id
+      setNotifications((prev) => prev.filter((n) => (n?.payment?._id || n?.paymentId || n?._id) !== pid));
+      toast.success("Payment confirmed and bidder registered.");
     } catch (err) {
       console.error("confirm notification error:", err);
-      alert(err?.message || "Failed to confirm notification");
+      toast.error(err?.message || "Failed to confirm notification");
     } finally {
-      setNotifProcessingId(null);
+      setNotifProcessingPaymentId(null);
     }
   };
 
   const handleRejectNotification = async (notifId) => {
     if (!window.confirm("Reject this payment verification request?")) return;
-    setNotifProcessingId(notifId);
+    const notif = notifications.find((n) => n._id === notifId);
+    const pid = notif?.payment?._id || notif?.paymentId || notifId;
+    setNotifProcessingPaymentId(pid);
     try {
       await rejectAdminNotification(notifId);
-      setNotifications((prev) => prev.filter((n) => n._id !== notifId));
-      alert("Payment verification rejected.");
+      // remove any notifications that reference the same payment id
+      setNotifications((prev) => prev.filter((n) => (n?.payment?._id || n?.paymentId || n?._id) !== pid));
+      toast.info("Payment verification rejected.");
     } catch (err) {
       console.error("reject notification error:", err);
-      alert(err?.message || "Failed to reject notification");
+      toast.error(err?.message || "Failed to reject notification");
     } finally {
-      setNotifProcessingId(null);
+      setNotifProcessingPaymentId(null);
     }
   };
 
@@ -191,29 +224,69 @@ function AdminDashboard() {
     return new Date(dateString).toLocaleString();
   };
 
+  // get the top bid amount from several possible fields used across the backend
+  const getTopBid = (a) => {
+    if (!a) return 0;
+    const v = a.currentBid ?? a.current ?? a.final ?? a.winningPrice ?? a.finalPrice ?? a.amount ?? a.startingPrice ?? 0;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Admin Dashboard</h1>
 
         {/* Filter Section */}
-        <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Filter by Status:
-          </label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All Auctions</option>
-            <option value="YET_TO_BE_VERIFIED">Yet to be Verified</option>
-            <option value="LIVE">Live</option>
-            <option value="UPCOMING">Upcoming</option>
-            <option value="ENDED">Ended</option>
-            <option value="CANCELLED">Cancelled</option>
-            <option value="REMOVED">Removed</option>
-          </select>
+        <div className="mb-6 bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <label className="block text-sm font-medium text-gray-700">
+              Filter by Status:
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Auctions</option>
+              <option value="YET_TO_BE_VERIFIED">Yet to be Verified</option>
+              <option value="LIVE">Live</option>
+              <option value="UPCOMING">Upcoming</option>
+              <option value="ENDED">Ended</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="REMOVED">Removed</option>
+            </select>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowNotifs(true)}
+                className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+              >
+                Payment Verifications ({notifications.length})
+              </button>
+              <button
+                onClick={async () => {
+                  setShowDeliveries(true);
+                  // load deliveries when opening
+                  try {
+                    setDeliverLoading(true);
+                    setDeliverError(null);
+                    const res = await getAllDeliveries();
+                    setDeliveries(res?.deliveries || []);
+                  } catch (err) {
+                    console.error('load deliveries error:', err);
+                    setDeliverError(err?.message || 'Failed to load deliveries');
+                  } finally {
+                    setDeliverLoading(false);
+                  }
+                }}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              >
+                Deliveries
+              </button>
+            </div>
+          </div>
         </div>
 
         {error && (
@@ -232,14 +305,7 @@ function AdminDashboard() {
               Total Auctions: <span className="font-semibold">{auctions.length}</span>
             </div>
 
-            <div className="mb-4">
-              <button
-                onClick={() => setShowNotifs(true)}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
-              >
-                Payment Verifications ({notifications.length})
-              </button>
-            </div>
+            
 
             {auctions.length === 0 ? (
               <div className="bg-white p-8 rounded-lg shadow-sm text-center text-gray-500">
@@ -276,14 +342,18 @@ function AdminDashboard() {
                           Bids
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
+                          <span className="sr-only">Actions</span>
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {auctions.map((auction) => (
-                        <tr key={auction._id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
+                        <tr
+                          key={auction._id}
+                          className="group hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleViewDetails(auction._id)}
+                        >
+                          <td className="px-4 py-2 whitespace-nowrap">
                             <div className="flex items-center">
                               {auction.item?.images?.[0] ? (
                                 <img
@@ -311,7 +381,7 @@ function AdminDashboard() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 py-2 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
                               {auction.createdBy?.username || auction.createdBy?.email || "N/A"}
                             </div>
@@ -319,7 +389,7 @@ function AdminDashboard() {
                               {auction.createdBy?.email || ""}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 py-2 whitespace-nowrap">
                             <span
                               className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
                                 auction.status
@@ -331,21 +401,21 @@ function AdminDashboard() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             ₹{auction.startingPrice?.toLocaleString() || "0"}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ₹{auction.currentBid?.toLocaleString() || "0"}
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                            ₹{getTopBid(auction).toLocaleString()}
                             {auction.currentWinner && (
                               <div className="text-xs text-gray-500">
                                 Winner: {auction.currentWinner?.username || auction.currentWinner?.email || "N/A"}
                               </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                             {formatDate(auction.startTime)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                             {formatDate(auction.endTime)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                             {auction.totalBids || 0}
                             {auction.totalParticipants > 0 && (
                               <div className="text-xs text-gray-500">
@@ -353,13 +423,8 @@ function AdminDashboard() {
                               </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <button
-                              onClick={() => handleViewDetails(auction._id)}
-                              className="px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-700"
-                            >
-                              View
-                            </button>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">
+                            {/* Row click opens details modal; no separate View button */}
                           </td>
                         </tr>
                       ))}
@@ -375,8 +440,8 @@ function AdminDashboard() {
       {/* Auction Detail Modal */}
       {/* Payment Verifications Modal */}
       {showNotifs && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowNotifs(false)}>
-          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" onClick={() => setShowNotifs(false)}>
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[80vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">Payment Verifications</h2>
@@ -402,17 +467,17 @@ function AdminDashboard() {
                         <div className="flex flex-col items-end gap-2">
                           <button
                             onClick={() => handleConfirmNotification(n._id)}
-                            disabled={notifProcessingId === n._id}
+                            disabled={notifProcessingPaymentId === (n.payment?._id || n.paymentId || n._id)}
                             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-60"
                           >
-                            {notifProcessingId === n._id ? 'Processing...' : 'Confirm'}
+                            {notifProcessingPaymentId === (n.payment?._id || n.paymentId || n._id) ? 'Processing...' : 'Confirm'}
                           </button>
                           <button
                             onClick={() => handleRejectNotification(n._id)}
-                            disabled={notifProcessingId === n._id}
+                            disabled={notifProcessingPaymentId === (n.payment?._id || n.paymentId || n._id)}
                             className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-60"
                           >
-                            {notifProcessingId === n._id ? 'Processing...' : 'Reject'}
+                            {notifProcessingPaymentId === (n.payment?._id || n.paymentId || n._id) ? 'Processing...' : 'Reject'}
                           </button>
                         </div>
                       </div>
@@ -424,9 +489,86 @@ function AdminDashboard() {
           </div>
         </div>
       )}
+      {showDeliveries && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" onClick={() => setShowDeliveries(false)}>
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">Deliveries</h2>
+                <button onClick={() => setShowDeliveries(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+              </div>
+
+              {deliverLoading ? (
+                <div className="text-center py-8">Loading deliveries...</div>
+              ) : deliverError ? (
+                <div className="text-center py-8 text-red-600">{deliverError}</div>
+              ) : deliveries.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No deliveries found.</div>
+              ) : (
+                <div className="space-y-4">
+                  {deliveries.map((d) => (
+                    <div key={d._id} className="border rounded p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-sm text-gray-600">Auction</div>
+                          <div className="font-semibold">{d.auctionId?.title || d.auctionId?._id || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">{d.auctionId?.item?.name || ''}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Seller</div>
+                          <div className="font-semibold">{d.sellerId?.username || d.sellerId?.email || d.sellerId?._id || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">{d.sellerId?.email || ''}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Buyer (Winner)</div>
+                          <div className="font-semibold">{d.buyerId?.username || d.buyerId?.email || d.buyerId?._id || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">{d.buyerId?.email || ''}</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-sm text-gray-600">Buyer Address</div>
+                          <div className="text-sm text-gray-900">
+                            {d.buyerAddress ? (
+                              <div>
+                                <div>{d.buyerAddress.name}</div>
+                                <div>{d.buyerAddress.street}, {d.buyerAddress.city}</div>
+                                <div>{d.buyerAddress.state} - {d.buyerAddress.postalCode}</div>
+                                <div>{d.buyerAddress.country}</div>
+                              </div>
+                            ) : <div className="text-gray-500">Not provided</div>}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Seller Address</div>
+                          <div className="text-sm text-gray-900">
+                            {d.sellerAddress ? (
+                              <div>
+                                <div>{d.sellerAddress.street}, {d.sellerAddress.city}</div>
+                                <div>{d.sellerAddress.state} - {d.sellerAddress.postalCode}</div>
+                                <div>{d.sellerAddress.country}</div>
+                              </div>
+                            ) : <div className="text-gray-500">Not provided</div>}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Status</div>
+                          <div className="text-sm text-gray-900">Payment: {d.paymentStatus || 'N/A'}</div>
+                          <div className="text-sm text-gray-900">Delivery: {d.deliveryStatus || 'N/A'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {selectedAuction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedAuction(null)}>
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" onClick={() => setSelectedAuction(null)}>
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">Auction Details</h2>
@@ -504,8 +646,11 @@ function AdminDashboard() {
                       <p className="text-xl font-semibold text-gray-900">₹{selectedAuction.startingPrice?.toLocaleString() || "0"}</p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500">Current Bid</h3>
-                      <p className="text-xl font-semibold text-gray-900">₹{selectedAuction.currentBid?.toLocaleString() || "0"}</p>
+                      <h3 className="text-sm font-medium text-gray-500">Current Top Bid</h3>
+                      <p className="text-xl font-semibold text-gray-900">₹{getTopBid(selectedAuction).toLocaleString()}</p>
+                      {selectedAuction.currentWinner && (
+                        <div className="mt-2 text-sm text-gray-600">Top bidder: {selectedAuction.currentWinner?.username || selectedAuction.currentWinner?.email || 'N/A'}</div>
+                      )}
                     </div>
                     {selectedAuction.buyItNowPrice && (
                       <div>
