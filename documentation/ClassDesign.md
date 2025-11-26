@@ -263,10 +263,10 @@ The Auction class represents auction listings created by sellers.
 | Attribute | Type | Description | Constraints |
 |-----------|------|-------------|-------------|
 | _id | ObjectId | Unique identifier | Auto-generated |
-| title | String | Auction title | Required, Trimmed |
+| title | String | Auction title | Required, Whitespace trimmed |
 | item | Item | Item details | Required (embedded object) |
 | createdBy | ObjectId | Seller's user ID | Required, References User |
-| status | String | Auction status | Enum: YET_TO_BE_VERIFIED, UPCOMING, LIVE, ENDED, CANCELLED, REMOVED |
+| status | String | Auction status | Required (see Status Enum below) |
 | verified | Boolean | Admin verification status | Default: false |
 | startingPrice | Number | Initial bid price | Required |
 | minIncrement | Number | Minimum bid increment | Required |
@@ -287,6 +287,14 @@ The Auction class represents auction listings created by sellers.
 | hasBeenExtended | Boolean | Extension status | Default: false |
 | createdAt | Date | Creation timestamp | Auto-generated |
 | updatedAt | Date | Update timestamp | Auto-generated |
+
+**Status Enum Values:**
+- `YET_TO_BE_VERIFIED` - Auction created but pending admin verification
+- `UPCOMING` - Auction verified and scheduled to start
+- `LIVE` - Auction is currently active and accepting bids
+- `ENDED` - Auction has ended normally
+- `CANCELLED` - Auction was cancelled before completion
+- `REMOVED` - Auction was removed by admin
 
 **Embedded: Item Object**
 | Attribute | Type | Description |
@@ -491,10 +499,12 @@ The AdminNotification class handles notifications for administrative actions.
 | updatedAt | Date | Update timestamp | Auto-generated |
 
 **Type Enum Values:**
-- PAYMENT VERIFICATION
-- WINNER CHOOSE COD
-- WINNER CHOOSE UPI
-- PAYMENT_SUCCESS_DELIVERY_PENDING
+- `PAYMENT VERIFICATION` - Payment needs admin verification
+- `WINNER CHOOSE COD` - Winner selected Cash on Delivery
+- `WINNER CHOOSE UPI` - Winner selected UPI payment
+- `PAYMENT_SUCCESS_DELIVERY_PENDING` - Payment confirmed, delivery pending
+
+> **Note:** The type enum values use inconsistent formatting (spaces vs underscores) as defined in the model.
 
 ---
 
