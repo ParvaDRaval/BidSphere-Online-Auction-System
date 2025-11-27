@@ -3,6 +3,16 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import OtpPage from '../Auth';
 import { vi } from 'vitest';
 
+const toastMock = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+}));
+
+vi.mock('react-toastify', () => ({
+  toast: toastMock,
+}));
+
 // mock react-router navigate
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -16,8 +26,11 @@ vi.mock('react-router-dom', async () => {
 
 describe('OtpPage (Auth.jsx)', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
     mockNavigate.mockClear();
+    toastMock.success.mockReset();
+    toastMock.error.mockReset();
+    toastMock.info.mockReset();
   });
 
   it('renders input and buttons', () => {
@@ -27,41 +40,32 @@ describe('OtpPage (Auth.jsx)', () => {
     expect(screen.getByText(/Resend OTP/i)).toBeDefined();
   });
 
-  it('shows success alert and navigates when OTP is correct', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('shows success toast and navigates when OTP is correct', async () => {
     render(<OtpPage />);
 
     const input = screen.getByPlaceholderText('Enter OTP');
     fireEvent.change(input, { target: { value: '1234' } });
     fireEvent.click(screen.getByRole('button', { name: /Verify OTP/i }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('✅ OTP Verified Successfully!'));
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('✅ OTP Verified Successfully!'));
     expect(mockNavigate).toHaveBeenCalledWith('/login');
-
-    alertSpy.mockRestore();
   });
 
-  it('shows invalid OTP alert when OTP is incorrect', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('shows invalid OTP message when OTP is incorrect', async () => {
     render(<OtpPage />);
 
     const input = screen.getByPlaceholderText('Enter OTP');
     fireEvent.change(input, { target: { value: '0000' } });
     fireEvent.click(screen.getByRole('button', { name: /Verify OTP/i }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Invalid OTP! Please try again.'));
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Invalid OTP! Please try again.'));
   });
 
-  it('resend button triggers OTP Resent alert', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('resend button triggers info toast', async () => {
     render(<OtpPage />);
 
     fireEvent.click(screen.getByText(/Resend OTP/i));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('OTP Resent!'));
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.info).toHaveBeenCalledWith('OTP Resent!'));
   });
 });

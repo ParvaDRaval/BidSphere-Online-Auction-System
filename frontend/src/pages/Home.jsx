@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listAuctions } from "../api";
+import { listAuctions, getCurrentUser } from "../api";
 import homeImg from "../assets/home.png";
 import ExploreCategories from "./ExploreCategories";
 /* eslint-disable react/prop-types */
@@ -59,6 +59,7 @@ function AuctionCard({ auction }) {
 function Home() {
   const [featured, setFeatured] = useState([]);
   const [featuredLoading, setFeaturedLoading] = useState(false);
+  const [showRegisterCTA, setShowRegisterCTA] = useState(true);
   // touch featuredLoading so coverage instruments the initial hook line
   void featuredLoading;
   // also touch the setter to ensure coverage marks its declaration executed
@@ -67,7 +68,53 @@ function Home() {
   void featured;
   void setFeatured;
 
-  
+  const applyStoredAuthState = useCallback(() => {
+    try {
+      const storedUser = localStorage.getItem("bidsphere_user");
+      setShowRegisterCTA(!storedUser);
+    } catch (err) {
+      setShowRegisterCTA(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (typeof getCurrentUser !== "function") {
+        if (mounted) applyStoredAuthState();
+        return;
+      }
+      try {
+        const res = await getCurrentUser();
+        if (!mounted) return;
+        if (res?.user) {
+          setShowRegisterCTA(false);
+          try {
+            localStorage.setItem("bidsphere_user", JSON.stringify(res.user));
+          } catch (storageErr) {
+            // ignore storage issues
+          }
+          return;
+        }
+      } catch (err) {
+        // ignore network error, fallback to storage copy
+      }
+      if (mounted) applyStoredAuthState();
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [applyStoredAuthState]);
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key === "bidsphere_user") {
+        applyStoredAuthState();
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [applyStoredAuthState]);
 
   // fetch a small set of featured live auctions for the hero/featured section
   useEffect(() => {
@@ -98,7 +145,9 @@ function Home() {
             <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-4 drop-shadow-xl">Where Buyers & Sellers Meet</h1>
             <p className="text-lg md:text-xl mb-6 max-w-xl mx-auto md:mx-0 drop-shadow-md">Discover everything from everyday finds to rare treasures — all in one trusted online auction hub.</p>
             <div className="flex gap-4 justify-center md:justify-start">
-              <Link to="/register" className="bg-yellow-400 hover:bg-yellow-500 text-black px-6 py-3 rounded-lg font-semibold shadow-md text-lg">Register Free</Link>
+              {showRegisterCTA && (
+                <Link to="/register" className="bg-yellow-400 hover:bg-yellow-500 text-black px-6 py-3 rounded-lg font-semibold shadow-md text-lg">Register Free</Link>
+              )}
               <Link to="/auctions" className="bg-white text-gray-800 px-6 py-3 rounded-lg font-medium shadow-sm text-lg">Browse Auctions</Link>
             </div>
           </div>

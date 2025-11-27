@@ -3,6 +3,16 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import VerifyEmail from '../VerifyMail';
 import { vi } from 'vitest';
 
+const toastMock = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+}));
+
+vi.mock('react-toastify', () => ({
+  toast: toastMock,
+}));
+
 // mock api
 vi.mock('../../api', () => ({
   verifyEmail: vi.fn(),
@@ -26,6 +36,9 @@ import { verifyEmail } from '../../api';
 describe('VerifyEmail page', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    toastMock.success.mockReset();
+    toastMock.error.mockReset();
+    toastMock.info.mockReset();
     mockNavigate.mockClear();
     mockLocation = { state: {} };
   });
@@ -37,18 +50,15 @@ describe('VerifyEmail page', () => {
     expect(emailInput.value).toBe('prefill@example.com');
   });
 
-  it('validates missing email/code and shows alert', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('validates missing email/code and shows toast error', async () => {
     render(<VerifyEmail />);
     // submit with both empty
     fireEvent.click(screen.getByRole('button', { name: /Verify Email/i }));
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Please provide both email and OTP code'));
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Please provide both email and OTP code'));
   });
 
   it('calls verifyEmail and navigates on success', async () => {
     verifyEmail.mockResolvedValue({ message: 'Verified' });
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(<VerifyEmail />);
     fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'a@b.com' } });
@@ -57,24 +67,19 @@ describe('VerifyEmail page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Verify Email/i }));
 
     await waitFor(() => expect(verifyEmail).toHaveBeenCalledWith({ email: 'a@b.com', code: '123456' }));
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Verified'));
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Verified'));
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/login'));
-
-    alertSpy.mockRestore();
   });
 
-  it('shows error alert on verifyEmail rejection', async () => {
+  it('shows error toast on verifyEmail rejection', async () => {
     verifyEmail.mockRejectedValue(new Error('Bad'));
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(<VerifyEmail />);
     fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'e@f.com' } });
     fireEvent.change(screen.getByPlaceholderText('Enter OTP'), { target: { value: '000000' } });
     fireEvent.click(screen.getByRole('button', { name: /Verify Email/i }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Bad'));
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Bad'));
   });
 
   it('shows loading state while verifyEmail is pending', async () => {
@@ -98,39 +103,31 @@ describe('VerifyEmail page', () => {
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/login'));
   });
 
-  it('resend shows instructional alert', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('resend shows instructional toast info', async () => {
     render(<VerifyEmail />);
     fireEvent.click(screen.getByText("Didn't receive code?"));
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Check your inbox/spam for the OTP. If you still didn't receive it, try registering again or contact support."));
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.info).toHaveBeenCalledWith("Check your inbox/spam for the OTP. If you still didn't receive it, try registering again or contact support."));
   });
 
   it('shows default success message when verifyEmail returns no message', async () => {
     verifyEmail.mockResolvedValue({}); // no message
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(<VerifyEmail />);
     fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'no-msg@x.com' } });
     fireEvent.change(screen.getByPlaceholderText('Enter OTP'), { target: { value: '111111' } });
     fireEvent.click(screen.getByRole('button', { name: /Verify Email/i }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Email verified successfully'));
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Email verified successfully'));
   });
 
   it('shows default failure message when reject has no message', async () => {
     verifyEmail.mockRejectedValue({}); // rejection with empty object
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(<VerifyEmail />);
     fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'no-msg@x.com' } });
     fireEvent.change(screen.getByPlaceholderText('Enter OTP'), { target: { value: '222222' } });
     fireEvent.click(screen.getByRole('button', { name: /Verify Email/i }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Verification failed'));
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Verification failed'));
   });
 });
