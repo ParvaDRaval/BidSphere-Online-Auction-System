@@ -4,6 +4,16 @@ import { MemoryRouter } from 'react-router-dom';
 import Login from '../Login';
 import { vi } from 'vitest';
 
+const toastMock = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+}));
+
+vi.mock('react-toastify', () => ({
+  toast: toastMock,
+}));
+
 // Mock the api module
 vi.mock('../../api', () => ({
   loginUser: vi.fn(),
@@ -26,6 +36,9 @@ import { loginUser, getCurrentUser } from '../../api';
 describe('Login page', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    toastMock.success.mockReset();
+    toastMock.error.mockReset();
+    toastMock.info.mockReset();
     localStorage.clear();
     mockNavigate.mockClear();
   });
@@ -35,8 +48,6 @@ describe('Login page', () => {
     loginUser.mockResolvedValue({ message: 'Welcome', user: { id: 1, name: 'A' } });
     // getCurrentUser returns a different user to overwrite
     getCurrentUser.mockResolvedValue({ user: { id: 2, name: 'B' } });
-
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(
       <MemoryRouter>
@@ -57,17 +68,13 @@ describe('Login page', () => {
     expect(stored).toBeDefined();
     expect(stored.id).toBe(2);
 
-    expect(alertSpy).toHaveBeenCalledWith('Welcome');
+    expect(toastMock.success).toHaveBeenCalledWith('Welcome');
     expect(mockNavigate).toHaveBeenCalledWith('/');
-
-    alertSpy.mockRestore();
   });
 
   it('successful login without res.user and getCurrentUser fails (no localStorage), resets form', async () => {
     loginUser.mockResolvedValue({ message: 'Hi' });
     getCurrentUser.mockRejectedValue(new Error('nope'));
-
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(
       <MemoryRouter>
@@ -84,7 +91,7 @@ describe('Login page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Log In/i }));
 
     await waitFor(() => expect(loginUser).toHaveBeenCalled());
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Hi'));
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Hi'));
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'));
 
     // since neither res.user nor me.user were stored, localStorage should be empty
@@ -93,13 +100,9 @@ describe('Login page', () => {
     // form reset
     expect(screen.getByPlaceholderText('Email ID').value).toBe('');
     expect(screen.getByPlaceholderText('Password').value).toBe('');
-
-    alertSpy.mockRestore();
   });
 
   it('validates required fields', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
     render(
       <MemoryRouter>
         <Login />
@@ -107,14 +110,10 @@ describe('Login page', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Log In/i }));
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Please fill in all fields.'));
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Please fill in all fields.'));
   });
 
   it('validates email format', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
     render(
       <MemoryRouter>
         <Login />
@@ -125,14 +124,10 @@ describe('Login page', () => {
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'password123' } });
     fireEvent.click(screen.getByRole('button', { name: /Log In/i }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Please enter a valid email address.'));
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Please enter a valid email address.'));
   });
 
   it('validates password length', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
     render(
       <MemoryRouter>
         <Login />
@@ -143,15 +138,11 @@ describe('Login page', () => {
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'short' } });
     fireEvent.click(screen.getByRole('button', { name: /Log In/i }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Password must be at least 8 characters long.'));
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Password must be at least 8 characters long.'));
   });
 
   it('shows error message on login failure and resets form', async () => {
     loginUser.mockRejectedValue(new Error('Invalid creds'));
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
     render(
       <MemoryRouter>
         <Login />
@@ -163,19 +154,15 @@ describe('Login page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Log In/i }));
 
     await waitFor(() => expect(loginUser).toHaveBeenCalled());
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Invalid creds'));
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Invalid creds'));
 
     // form reset
     expect(screen.getByPlaceholderText('Email ID').value).toBe('');
     expect(screen.getByPlaceholderText('Password').value).toBe('');
-
-    alertSpy.mockRestore();
   });
 
   it('shows default failure message when rejection has no message', async () => {
     loginUser.mockRejectedValue({}); // no message
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
     render(
       <MemoryRouter>
         <Login />
@@ -186,16 +173,12 @@ describe('Login page', () => {
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'password123' } });
     fireEvent.click(screen.getByRole('button', { name: /Log In/i }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Login failed'));
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Login failed'));
   });
 
   it('toggles remember checkbox and resets it after submit', async () => {
     loginUser.mockResolvedValue({ message: 'ok' });
     getCurrentUser.mockRejectedValue(new Error('nope'));
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
     render(
       <MemoryRouter>
         <Login />
@@ -213,17 +196,14 @@ describe('Login page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Log In/i }));
 
     await waitFor(() => expect(loginUser).toHaveBeenCalled());
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('ok'));
     // after finally, form resets including remember
     expect(screen.getByRole('checkbox').checked).toBe(false);
-
-    alertSpy.mockRestore();
   });
   
   it('shows default success message when no message returned', async () => {
     loginUser.mockResolvedValue({}); // no message
     getCurrentUser.mockRejectedValue(new Error('nope'));
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
     render(
       <MemoryRouter>
         <Login />
@@ -234,9 +214,7 @@ describe('Login page', () => {
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'password123' } });
     fireEvent.click(screen.getByRole('button', { name: /Log In/i }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Logged in successfully'));
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Logged in successfully'));
   });
     it('successful login where getCurrentUser returns valid response but no user (branch coverage)', async () => {
     // loginUser sets the initial user
@@ -245,8 +223,6 @@ describe('Login page', () => {
     // getCurrentUser returns a success object but WITHOUT a 'user' property
     // This forces the 'if (me && me.user)' check on line 56 to be FALSE
     getCurrentUser.mockResolvedValue({ status: 'ok' }); 
-
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(
       <MemoryRouter>
@@ -269,8 +245,7 @@ describe('Login page', () => {
     expect(stored.name).toBe('FirstUser');
 
     expect(mockNavigate).toHaveBeenCalledWith('/');
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Success'));
   });
   it('successful login where getCurrentUser fails (triggers catch block), falls back to loginUser data', async () => {
     // 1. loginUser succeeds and returns a user (id: 100)
@@ -279,8 +254,6 @@ describe('Login page', () => {
     // 2. getCurrentUser fails (throws error)
     // This forces the execution into the catch block at line 58-60
     getCurrentUser.mockRejectedValue(new Error('Fetch failed'));
-
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(
       <MemoryRouter>
@@ -299,7 +272,7 @@ describe('Login page', () => {
     await waitFor(() => expect(getCurrentUser).toHaveBeenCalled());
 
     // Ensure the flow continued to the success alert despite the internal error
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Login Success'));
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Login Success'));
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'));
 
     // Verify the fallback: LocalStorage should still contain the user from step 1
@@ -307,7 +280,5 @@ describe('Login page', () => {
     const stored = JSON.parse(localStorage.getItem('bidsphere_user'));
     expect(stored).toBeDefined();
     expect(stored.id).toBe(100);
-
-    alertSpy.mockRestore();
   });
 });

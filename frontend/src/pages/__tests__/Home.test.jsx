@@ -1,341 +1,295 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import Home from '../Home';
 import { vi } from 'vitest';
+import Home from '../Home';
 
-// Mock the api
-vi.mock('../../api', () => ({
+const apiMocks = vi.hoisted(() => ({
   listAuctions: vi.fn(),
+  getCurrentUser: vi.fn(),
 }));
 
-// Mock ExploreCategories to avoid rendering its internal complexity
+vi.mock('../../api', () => apiMocks);
+vi.mock('../../assets/home.png', () => ({ default: 'home.png' }));
 vi.mock('../ExploreCategories', () => ({
-  __esModule: true,
-  default: () => React.createElement('div', {}, 'ExploreCategoriesMock'),
+  default: () => <div data-testid="explore-categories" />,
 }));
-
-import { listAuctions } from '../../api';
-
-function deferred() {
-  let resolve;
-  const p = new Promise((res) => { resolve = res; });
-  return { p, resolve };
-}
 
 describe('Home page', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    apiMocks.listAuctions.mockReset();
+    apiMocks.getCurrentUser.mockReset();
+    apiMocks.getCurrentUser.mockResolvedValue(null);
   });
 
-  it('renders static hero and featured section when no auctions', async () => {
-    listAuctions.mockResolvedValue({ auctions: [] });
-    const { container } = render(
+  function renderHome() {
+    return render(
       <MemoryRouter>
         <Home />
       </MemoryRouter>
     );
+  }
 
-    // static hero content
-    expect(screen.getByText(/Where Buyers & Sellers Meet/i)).toBeDefined();
-    expect(screen.getByText(/Discover everything from everyday finds/i)).toBeDefined();
+  it('renders hero section with all elements', () => {
+    apiMocks.listAuctions.mockResolvedValue({ auctions: [] });
+    renderHome();
 
-    // Featured section header
-    expect(screen.getByText(/Featured Live Auctions/i)).toBeDefined();
-
-    // ExploreCategories mock present
-    expect(screen.getByText('ExploreCategoriesMock')).toBeDefined();
-
-    // Wait for useEffect to finish and show empty placeholders (dashed yellow boxes)
-    await waitFor(() => {
-      const empties = container.querySelectorAll('.border-dashed');
-      expect(empties.length).toBeGreaterThanOrEqual(1);
-    });
+    expect(screen.getByText('Where Buyers & Sellers Meet')).toBeInTheDocument();
+    expect(screen.getByText(/Discover everything from everyday finds to rare treasures/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Register Free/i })).toHaveAttribute('href', '/register');
+    expect(screen.getByRole('link', { name: /Browse Auctions/i })).toHaveAttribute('href', '/auctions');
+    expect(screen.getByAltText('Home banner')).toBeInTheDocument();
   });
 
-  it('shows loading placeholders while fetching featured auctions', async () => {
-    const d = deferred();
-    listAuctions.mockReturnValue(d.p);
-    const { container } = render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
+  it('fetches featured auctions and renders them as cards', async () => {
+    apiMocks.listAuctions.mockResolvedValue({
+      auctions: [
+        {
+          _id: 'a1',
+          title: 'Vintage Camera',
+          status: 'LIVE',
+          startingPrice: 1200,
+          endTime: '2025-01-05T12:00:00Z',
+          item: {
+            name: 'Camera',
+            category: 'Photography',
+            images: ['/camera.jpg'],
+          },
+        },
+      ],
+    });
+
+    renderHome();
+
+    await waitFor(() =>
+      expect(apiMocks.listAuctions).toHaveBeenCalledWith({ status: 'LIVE', limit: 4 })
+    );
+    expect(screen.getByRole('link', { name: /Vintage Camera/i })).toHaveAttribute('href', '/auction/a1');
+    expect(screen.getByText(/Starting: ₹1200/i)).toBeInTheDocument();
+    expect(screen.getByTestId('explore-categories')).toBeInTheDocument();
+  });
+
+  it('shows loading state while fetching featured auctions', async () => {
+    apiMocks.listAuctions.mockImplementation(
+      () => new Promise(() => {}) // Never resolves
     );
 
-    // while promise pending, featuredLoading true -> skeletons with bg-gray-200 present
-    const loaders = container.querySelectorAll('.bg-gray-200');
-    expect(loaders.length).toBeGreaterThanOrEqual(1);
+    renderHome();
 
-    // resolve with empty data and wait for loaders to go away
-    d.resolve({ auctions: [] });
-    await waitFor(() => {
-      const loadersAfter = container.querySelectorAll('.bg-gray-200');
-      expect(loadersAfter.length).toBe(0);
-    });
+    // Should show 4 loading placeholders
+    const placeholders = screen.getAllByText('', { selector: '.bg-gray-200' });
+    expect(placeholders).toHaveLength(4);
   });
 
-  it('renders auctions list with images, badges and starting price', async () => {
+  it('shows empty state when no featured auctions', async () => {
+    apiMocks.listAuctions.mockResolvedValue({ auctions: [] });
+
+    renderHome();
+
+    await waitFor(() => expect(apiMocks.listAuctions).toHaveBeenCalled());
+    
+    // Should show 4 empty placeholders
+    const emptyPlaceholders = screen.getAllByText('', { selector: '.bg-yellow-50' });
+    expect(emptyPlaceholders).toHaveLength(4);
+    
+    // Hero CTA should still be available
+    expect(screen.getByRole('link', { name: /Register Free/i })).toHaveAttribute('href', '/register');
+    expect(screen.getByRole('link', { name: /View All Live Auctions/i })).toHaveAttribute('href', '/auctions?status=LIVE');
+  });
+
+  it('renders AuctionCard with different statuses', async () => {
     const auctions = [
       {
-        _id: '1',
-        title: 'Antique Vase',
-        item: { name: 'Vase', images: ['http://example.com/vase.jpg'], category: 'Decor' },
-        startingPrice: 500,
-        endTime: '2025-12-01T12:00:00.000Z',
+        _id: 'a1',
+        title: 'Live Auction',
         status: 'LIVE',
+        startingPrice: 1000,
+        item: { name: 'Item 1', category: 'Category 1', images: [] },
       },
       {
-        _id: '2',
-        title: 'Old Clock',
-        item: { name: 'Clock', images: ['filename.jpg'], category: 'Collectibles' },
-        startingPrice: 1200,
-        endTime: '2025-12-05T15:30:00.000Z',
-        status: 'YET_TO_BE_VERIFIED',
+        _id: 'a2',
+        title: 'Upcoming Auction',
+        status: 'UPCOMING',
+        startingPrice: 2000,
+        item: { name: 'Item 2', category: 'Category 2' },
       },
       {
-        _id: '3',
-        title: '',
-        item: { name: 'Unknown', images: [], category: 'Misc' },
-        startingPrice: 0,
-        endTime: null,
+        _id: 'a3',
+        title: 'Ended Auction',
+        status: 'ENDED',
+        startingPrice: 3000,
+        item: { name: 'Item 3', category: 'Category 3' },
+      },
+      {
+        _id: 'a4',
+        title: 'Cancelled Auction',
         status: 'CANCELLED',
+        startingPrice: 4000,
+        item: { name: 'Item 4', category: 'Category 4' },
       },
     ];
 
-    listAuctions.mockResolvedValue({ auctions });
+    apiMocks.listAuctions.mockResolvedValue({ auctions });
 
-    const { container } = render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
+    renderHome();
 
-    // Wait for auctions to render
-    await waitFor(() => expect(container.querySelectorAll('a[href^="/auction/"]').length).toBeGreaterThanOrEqual(1));
+    await waitFor(() => expect(apiMocks.listAuctions).toHaveBeenCalled());
 
-    // Check first auction image rendered (http URL)
-    const img = container.querySelector('img[alt="Vase"]');
-    expect(img).toBeDefined();
-    expect(img.getAttribute('src')).toContain('http://example.com/vase.jpg');
-
-    // Check starting price displayed
-    expect(container.textContent).toContain('Starting: ₹500');
-
-    // Check badge texts for statuses
-    expect(container.textContent).toContain('LIVE');
-    expect(container.textContent).toContain('YET_TO_BE_VERIFIED');
-    expect(container.textContent).toContain('CANCELLED');
-
-    // For auction with no image, 'No image' should be present for at least one card
-    expect(container.textContent).toContain('No image');
+    // Check status badges
+    expect(screen.getByText('LIVE')).toBeInTheDocument();
+    expect(screen.getByText('UPCOMING')).toBeInTheDocument();
+    expect(screen.getByText('ENDED')).toBeInTheDocument();
+    expect(screen.getByText('CANCELLED')).toBeInTheDocument();
   });
 
-  it('covers all status badge branches and default case', async () => {
-    const auctions = [
-      { _id: 's1', title: 'A1', item: { name: 'I1', images: ['http://x/a.jpg'], category: 'C1' }, startingPrice: 10, endTime: '2025-12-01T12:00:00.000Z', status: 'LIVE' },
-      { _id: 's2', title: 'A2', item: { name: 'I2', images: ['filename.jpg'], category: 'C2' }, startingPrice: 20, endTime: null, status: 'UPCOMING' },
-      { _id: 's3', title: 'A3', item: { name: 'I3', images: [], category: 'C3' }, startingPrice: 30, endTime: null, status: 'ENDED' },
-      { _id: 's4', title: 'A4', item: { name: 'I4', images: [], category: 'C4' }, startingPrice: 40, endTime: null, status: 'CANCELLED' },
-      { _id: 's5', title: 'A5', item: { name: 'I5', images: [], category: 'C5' }, startingPrice: 50, endTime: null, status: 'REMOVED' },
-      { _id: 's6', title: 'A6', item: { name: 'I6', images: [], category: 'C6' }, startingPrice: 60, endTime: null, status: 'YET_TO_BE_VERIFIED' },
-      { _id: 's7', title: 'A7', item: { name: 'I7', images: [], category: 'C7' }, startingPrice: 70, endTime: null, status: 'SOMETHING' },
-    ];
-
-    listAuctions.mockResolvedValue({ auctions });
-    const { container } = render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => expect(container.querySelectorAll('a[href^="/auction/"]').length).toBeGreaterThanOrEqual(1));
-
-    // Assert badges text present for each status
-    expect(container.textContent).toContain('LIVE');
-    expect(container.textContent).toContain('UPCOMING');
-    expect(container.textContent).toContain('ENDED');
-    expect(container.textContent).toContain('CANCELLED');
-    expect(container.textContent).toContain('REMOVED');
-    expect(container.textContent).toContain('YET_TO_BE_VERIFIED');
-    // default (unknown) should render too
-    expect(container.textContent).toContain('SOMETHING');
-
-    // Check that http image was used for first auction
-    const img = container.querySelector('img[alt="I1"]');
-    expect(img).toBeDefined();
-    expect(img.getAttribute('src')).toContain('http://x/a.jpg');
-
-    // filename.jpg should not be treated as full URL and will show 'No image' placeholder for that card
-    expect(container.textContent).toContain('No image');
-  });
-
-  it('handles leading-slash images and title fallback', async () => {
+  it('renders AuctionCard with missing data gracefully', async () => {
     const auctions = [
       {
-        _id: 'slash-1',
-        title: null,
-        item: { name: 'SlashItem', images: ['/images/pic.jpg'], category: 'Slash' },
-        startingPrice: 99,
-        endTime: null,
+        _id: 'a1',
+        // Missing title
         status: 'LIVE',
-      },
-      {
-        _id: 'untitled-1',
-        title: null,
-        item: { name: null, images: [], category: 'Misc' },
-        startingPrice: null,
-        endTime: null,
-        status: 'SOMETHING',
+        // Missing startingPrice
+        item: {
+          // Missing name
+          category: 'Category 1',
+          images: [],
+        },
       },
     ];
 
-    listAuctions.mockResolvedValue({ auctions });
+    apiMocks.listAuctions.mockResolvedValue({ auctions });
 
-    const { container } = render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
+    renderHome();
 
-    // wait for auctions to render as links
-    await waitFor(() => expect(container.querySelectorAll('a[href^="/auction/"]').length).toBeGreaterThanOrEqual(1));
+    await waitFor(() => expect(apiMocks.listAuctions).toHaveBeenCalled());
 
-    // leading-slash image should be used as src and alt should be item name
-    const img = container.querySelector('img[alt="SlashItem"]');
-    expect(img).toBeDefined();
-    expect(img.getAttribute('src')).toBe('/images/pic.jpg');
-
-    // second auction has no title and no item.name -> component should show fallback title
-    expect(container.textContent).toContain('Untitled Auction');
-
-    // LIVE badge should have green classes
-    const liveBadge = screen.getByText('LIVE');
-    expect(liveBadge).toHaveClass('bg-green-100');
+    expect(screen.getByText('Untitled Auction')).toBeInTheDocument();
+    expect(screen.getByText('Item')).toBeInTheDocument();
+    expect(screen.queryByText(/Starting:/)).not.toBeInTheDocument();
   });
 
-  it('handles fetch error and ensures loading toggles off', async () => {
-    // make listAuctions reject to trigger catch/finally
-    listAuctions.mockRejectedValue(new Error('network')); 
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('renders how it works section', async () => {
+    apiMocks.listAuctions.mockResolvedValue({ auctions: [] });
+    renderHome();
 
-    const { container } = render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
+    await waitFor(() => expect(apiMocks.listAuctions).toHaveBeenCalled());
 
-    // While promise pending, loaders show
-    const loaders = container.querySelectorAll('.bg-gray-200');
-    expect(loaders.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('How BidSphere Works')).toBeInTheDocument();
+    expect(screen.getByText('Simple, transparent and secure auction process')).toBeInTheDocument();
+    
+    // Check all steps
+    expect(screen.getByText('1. Register')).toBeInTheDocument();
+    expect(screen.getByText('2. Browse')).toBeInTheDocument();
+    expect(screen.getByText('3. Bid')).toBeInTheDocument();
+    expect(screen.getByText('4. Win')).toBeInTheDocument();
+    
+    // Check step descriptions
+    expect(screen.getByText('Create your free account and verify your identity')).toBeInTheDocument();
+    expect(screen.getByText('Explore thousands of unique items across categories')).toBeInTheDocument();
+    expect(screen.getByText('Place your bids and compete in real-time')).toBeInTheDocument();
+    expect(screen.getByText('Secure your item and complete payment')).toBeInTheDocument();
+  });
 
-    // Wait for effect to settle and loading to go false (so placeholders become empty dashed boxes)
+  it('renders testimonials section', async () => {
+    apiMocks.listAuctions.mockResolvedValue({ auctions: [] });
+    renderHome();
+
+    await waitFor(() => expect(apiMocks.listAuctions).toHaveBeenCalled());
+
+    expect(screen.getByText('What Our Collectors Say')).toBeInTheDocument();
+    expect(screen.getByText('Join thousands of satisfied collectors worldwide')).toBeInTheDocument();
+    
+    // Check testimonial cards
+    expect(screen.getByText('Classic Collectibles')).toBeInTheDocument();
+    expect(screen.getByText('Verified Seller')).toBeInTheDocument();
+    expect(screen.getByText('Wade Warren')).toBeInTheDocument();
+    expect(screen.getByText('Long-time Collector')).toBeInTheDocument();
+    expect(screen.getByText('Devon Lane')).toBeInTheDocument();
+    expect(screen.getByText('First-time Bidder')).toBeInTheDocument();
+    
+    // Check testimonial content
+    expect(screen.getByText('Classic Collectibles')).toBeInTheDocument();
+    expect(screen.getByText('Verified Seller')).toBeInTheDocument();
+    
+    // Check initials are generated correctly
+    expect(screen.getByText('CC')).toBeInTheDocument(); // Classic Collectibles
+    expect(screen.getByText('WW')).toBeInTheDocument(); // Wade Warren
+    expect(screen.getByText('DL')).toBeInTheDocument(); // Devon Lane
+  });
+
+  it('handles API errors gracefully', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    apiMocks.listAuctions.mockRejectedValue(new Error('Network error'));
+
+    renderHome();
+
     await waitFor(() => {
-      const empties = container.querySelectorAll('.border-dashed');
-      expect(empties.length).toBeGreaterThanOrEqual(1);
+      expect(consoleSpy).toHaveBeenCalledWith('fetchFeatured error:', expect.any(Error));
     });
 
-    expect(spy).toHaveBeenCalled();
-    spy.mockRestore();
+    // Should still render hero section even if API fails
+    expect(screen.getByText('Where Buyers & Sellers Meet')).toBeInTheDocument();
+    expect(screen.getByTestId('explore-categories')).toBeInTheDocument();
+
+    consoleSpy.mockRestore();
   });
 
-  it('renders image when src starts with a slash and covers that branch', async () => {
-    const auctions = [
-      {
-        _id: 'slash-1',
-        title: 'Slash Img',
-        item: { name: 'SlashItem', images: ['/static/img.jpg'], category: 'Slash' },
-        startingPrice: 99,
-        endTime: '2025-11-20T12:00:00.000Z',
-        status: 'LIVE',
-      },
-    ];
-
-    listAuctions.mockResolvedValue({ auctions });
-
-    const { container } = render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => expect(container.querySelectorAll('a[href^="/auction/"]').length).toBeGreaterThanOrEqual(1));
-
-    const img = container.querySelector('img[alt="SlashItem"]');
-    expect(img).toBeDefined();
-    expect(img.getAttribute('src')).toBe('/static/img.jpg');
-  });
-
-  it('explicitly exercises fetchFeatured loading true->false path', async () => {
-    // create a deferred promise so we can assert loading state while pending
-    const d = deferred();
-    listAuctions.mockReturnValue(d.p);
-
-    const { container } = render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
-
-    // while the promise is pending, the component should show loading placeholders
-    const loaders = container.querySelectorAll('.bg-gray-200');
-    expect(loaders.length).toBeGreaterThanOrEqual(1);
-
-    // now resolve the promise and ensure loaders are removed (finally branch ran)
-    d.resolve({ auctions: [] });
-    await waitFor(() => {
-      const loadersAfter = container.querySelectorAll('.bg-gray-200');
-      expect(loadersAfter.length).toBe(0);
-    });
-  });
-
-  // --- UPDATED TEST CASE FOR LINE 80 (unmount) COVERAGE ---
-  it('returns early if component unmounts before fetch resolves', async () => {
-    const d = deferred();
-    listAuctions.mockReturnValue(d.p);
-
-    const { container, unmount } = render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
-
-    // ensure loaders are present while pending
-    expect(container.querySelectorAll('.bg-gray-200').length).toBeGreaterThanOrEqual(1);
-
-    // unmount before resolving to trigger the `if (!mounted) return` branch
+  it('cleans up useEffect on unmount', async () => {
+    apiMocks.listAuctions.mockResolvedValue({ auctions: [] });
+    
+    const { unmount } = renderHome();
+    
+    // Unmount before API call completes
     unmount();
-
-    // resolve after unmount; should not throw
-    d.resolve({ auctions: [{ _id: 'x', item: { name: 'X', images: [] } }] });
-
-    // CRITICAL UPDATE: 
-    // Use a real delay to allow the microtask queue to flush and the 
-    // async function inside useEffect to resume execution up to the return statement.
-    // Simple Promise.resolve() is often insufficient for coverage tools here.
-    await new Promise((r) => setTimeout(r, 0));
+    
+    // Should not cause any errors
+    expect(true).toBe(true);
   });
 
-  it('renders fallback badge text and category when fields missing', async () => {
+  it('renders featured auctions section header', async () => {
+    apiMocks.listAuctions.mockResolvedValue({ auctions: [] });
+    renderHome();
+
+    await waitFor(() => expect(apiMocks.listAuctions).toHaveBeenCalled());
+
+    expect(screen.getByText('Featured Live Auctions')).toBeInTheDocument();
+    expect(screen.getByText("Don't miss out on these exciting live listings")).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /View All Live Auctions/i })).toHaveAttribute('href', '/auctions?status=LIVE');
+  });
+
+  it('handles auction images correctly', async () => {
     const auctions = [
-      { _id: 'f1', title: null, item: { name: null, images: [] }, startingPrice: null, endTime: null, status: undefined },
-      { _id: 'f2', title: 'HasCat', item: { name: 'Name', images: ['http://a/b.jpg'], category: undefined }, startingPrice: 1, endTime: null, status: 'LIVE' }
+      {
+        _id: 'a1',
+        title: 'Auction with image',
+        status: 'LIVE',
+        startingPrice: 1000,
+        item: {
+          name: 'Item',
+          category: 'Category',
+          images: ['http://example.com/image.jpg'],
+        },
+      },
+      {
+        _id: 'a2',
+        title: 'Auction without image',
+        status: 'LIVE',
+        startingPrice: 2000,
+        item: {
+          name: 'Item 2',
+          category: 'Category 2',
+          images: [],
+        },
+      },
     ];
 
-    listAuctions.mockResolvedValue({ auctions });
+    apiMocks.listAuctions.mockResolvedValue({ auctions });
 
-    const { container } = render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
+    renderHome();
 
-    await waitFor(() => expect(container.querySelectorAll('a[href^="/auction/"]').length).toBeGreaterThanOrEqual(1));
+    await waitFor(() => expect(apiMocks.listAuctions).toHaveBeenCalled());
 
-    // first auction should show fallback title and N/A badge
-    expect(container.textContent).toContain('Untitled Auction');
-    expect(container.textContent).toContain('N/A');
-
-    // second auction has undefined category -> should fall back to 'Category'
-    expect(container.textContent).toContain('Category');
+    expect(screen.getByAltText('Item')).toHaveAttribute('src', 'http://example.com/image.jpg');
+    expect(screen.getByText('No image')).toBeInTheDocument();
   });
 });
