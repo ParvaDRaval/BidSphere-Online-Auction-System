@@ -183,47 +183,67 @@ export default function Watchlist() {
 
   return (
     <div className="min-h-screen bg-[#fdfbf6] p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold">Watchlist</h1>
-          <div className="text-sm text-gray-600">
-            Showing {watchlist.length} items
-          </div>
-        </div>
-
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-gray-600">
-              All the auctions you've added to your watchlist.
+      <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Sidebar: match buyer dashboard */}
+        <aside className="lg:col-span-3 bg-white border rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-green-600 text-white flex items-center justify-center font-semibold">
+              {(() => {
+                const displayName = (user && (user.username || user.name || user.email)) || "U";
+                return String(displayName).split(" ").map(s=>s[0]||"").slice(0,2).join("").toUpperCase();
+              })()}
             </div>
-            <input
-              placeholder="Search auction by name..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="border rounded-md px-3 py-2 text-sm"
-            />
+            <div>
+              <div className="font-semibold">{(user && (user.username || user.name)) || (loading ? 'Loading...' : 'First Last')}</div>
+              <div className="text-xs text-gray-500">Active bidder</div>
+            </div>
           </div>
 
-          {loading ? (
-            <div className="text-center py-8 text-gray-600">
-              Loading watchlist...
+          <nav className="mt-6">
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link to="/buyer-dashboard" className="block py-2 px-3 rounded hover:bg-gray-50">Dashboard</Link>
+              </li>
+              <li>
+                <Link to="/my-bids" className="block py-2 px-3 rounded hover:bg-gray-50">My Bids</Link>
+              </li>
+              <li>
+                <Link to="/watchlist" className="block py-2 px-3 rounded bg-green-50 font-medium">Watchlist</Link>
+              </li>
+            </ul>
+          </nav>
+        </aside>
+
+        <main className="lg:col-span-9">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-semibold">Watchlist</h1>
+            <div className="text-sm text-gray-600">Showing {watchlist.length} items</div>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm text-gray-600">All the auctions you've added to your watchlist.</div>
+              <input
+                placeholder="Search auction by name..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm"
+              />
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-8 text-gray-600">
-              No items in watchlist.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filtered.map((w, i) => (
-                <WatchRow
-                  key={w._id || w.auctionId || i}
-                  w={w}
-                  onRemove={handleRemove}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+
+            {loading ? (
+              <div className="text-center py-8 text-gray-600">Loading watchlist...</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-8 text-gray-600">No items in watchlist.</div>
+            ) : (
+              <div className="space-y-3">
+                {filtered.map((w, i) => (
+                  <WatchRow key={w._id || w.auctionId || i} w={w} onRemove={handleRemove} />
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
       </div>
     </div>
   );

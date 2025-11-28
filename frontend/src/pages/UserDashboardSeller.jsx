@@ -177,7 +177,7 @@ export default function UserDashboardSeller() {
 
           <nav className="mt-6">
             <ul className="space-y-2 text-sm">
-              <li><Link to="/dashboard" className="block py-2 px-3 rounded bg-blue-50 font-medium">Dashboard</Link></li>
+              <li><Link to="/seller-dashboard" className="block py-2 px-3 rounded bg-blue-50 font-medium">Dashboard</Link></li>
               <li><Link to="/my-listings" className="block py-2 px-3 rounded hover:bg-gray-50">My Listings</Link></li>
               <li>
                 <button
@@ -190,7 +190,6 @@ export default function UserDashboardSeller() {
                   Earnings
                 </button>
               </li>
-              <li><Link to="/settings" className="block py-2 px-3 rounded hover:bg-gray-50">Settings</Link></li>
             </ul>
           </nav>
         </aside>

@@ -302,14 +302,7 @@ export default function UserDashboardBuyer() {
                   Watchlist
                 </Link>
               </li>
-              <li>
-                <Link
-                  to="/settings"
-                  className="block py-2 px-3 rounded hover:bg-gray-50"
-                >
-                  Settings
-                </Link>
-              </li>
+             
             </ul>
           </nav>
         </aside>

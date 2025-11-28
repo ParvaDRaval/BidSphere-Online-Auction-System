@@ -199,12 +199,15 @@ function AuctionDetails() {
   // Countdown timer
   useEffect(() => {
     function compute() {
+      // if auction is UPCOMING, countdown to startTime; otherwise countdown to endTime
+      const startTime = auction?.startTime || auction?.startsAt || auction?.start;
       const endTime = auction?.endTime || auction?.endsAt || auction?.end;
-      if (!endTime) {
+      const targetTime = (auction?.status === 'UPCOMING' && startTime) ? startTime : endTime;
+      if (!targetTime) {
         setTimeLeft({ days: "--", hours: "--", mins: "--", secs: "--" });
         return;
       }
-      const end = new Date(endTime).getTime();
+      const end = new Date(targetTime).getTime();
       if (isNaN(end)) {
         setTimeLeft({ days: "--", hours: "--", mins: "--", secs: "--" });
         return;
@@ -440,6 +443,10 @@ function AuctionDetails() {
   const isSeller = currentUser?._id && seller?._id && currentUser._id.toString() === seller._id.toString();
   const isAuctionLive = auction?.status === "LIVE";
   const isAuctionEnded = auction?.status === 'ENDED';
+  const isUpcoming = auction?.status === 'UPCOMING';
+  const countdownTitle = isUpcoming ? 'AUCTION STARTS IN' : 'AUCTION ENDS IN';
+  const countdownDateLabel = isUpcoming ? 'Starts:' : 'Ends:';
+  const countdownTargetDate = isUpcoming ? (auction?.startTime || auction?.startsAt || auction?.start) : (auction?.endTime || auction?.endsAt || auction?.end);
   // determine top bidder (may be stored in auction.auctionWinner or topBids[0])
   const topBidderId = (
     (auction && (auction.auctionWinner || auction.currentWinner)) ||
@@ -497,7 +504,7 @@ function AuctionDetails() {
           <aside className="lg:col-span-4">
             <div className="sticky top-6 space-y-4">
               <div className="bg-yellow-100 p-4 rounded-lg shadow">
-                <div className="text-sm text-gray-700 font-semibold">AUCTION ENDS IN</div>
+                <div className="text-sm text-gray-700 font-semibold">{countdownTitle}</div>
                 <div className="mt-3 grid grid-cols-4 gap-2">
                   <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
                     <div className="text-2xl font-bold">{timeLeft.days}</div>
@@ -602,6 +609,7 @@ function AuctionDetails() {
               <div className="bg-white p-4 rounded-lg shadow">
                 <h4 className="font-semibold mb-2">Live Auction Activity</h4>
                 <div className="text-sm text-gray-500">{topBids.length === 0 ? 'No bids yet' : `Top bid: ₹${topBids[0]?.amount}`}</div>
+                <div className="text-xs text-gray-600 mt-2">{countdownDateLabel} {countdownTargetDate ? new Date(countdownTargetDate).toLocaleString() : "–"}</div>
               </div>
             </div>
           </aside>
@@ -787,7 +795,8 @@ function AuctionDetails() {
 
             {/* Countdown Timer */}
             <div className="bg-yellow-100 p-4 rounded-lg shadow">
-              <div className="text-sm text-gray-700 font-semibold">AUCTION ENDS IN</div>
+              <div className="text-sm text-gray-700 font-semibold">{countdownTitle}</div>
+                {/* Show STARTS IN when upcoming */}
               <div className="mt-3 grid grid-cols-4 gap-2">
                 <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold">{timeLeft.days}</div>
@@ -807,7 +816,7 @@ function AuctionDetails() {
                 </div>
               </div>
               <div className="text-xs text-gray-600 mt-2">
-                Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}
+                {countdownDateLabel} {countdownTargetDate ? new Date(countdownTargetDate).toLocaleString() : "–"}
               </div>
             </div>
 
