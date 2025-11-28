@@ -22,7 +22,17 @@ function Navbar() {
       const storedUser = localStorage.getItem("bidsphere_user");
       if (storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+          // Handle both cases: {user: null} and direct null/undefined
+          if (parsedUser && parsedUser.user === null) {
+            setUser(null);
+          } else if (parsedUser && parsedUser.user) {
+            setUser(parsedUser.user);
+          } else if (parsedUser) {
+            setUser(parsedUser);
+          } else {
+            setUser(null);
+          }
         } catch (e) {
           // if parsing fails, store raw string
           setUser(storedUser);
@@ -58,8 +68,9 @@ function Navbar() {
     // try to get authoritative user from backend first
     let mounted = true;
     (async () => {
+      let res = null;
       try {
-        const res = await getCurrentUser();
+        res = await getCurrentUser();
         if (!mounted) return;
         if (res?.user) {
           setUser(res.user);
@@ -71,6 +82,12 @@ function Navbar() {
         // ignore and fallback to storage
       }
       loadAuthFromStorage();
+      // If backend call succeeded but returned no user, clear stale localStorage data
+      if (res && !res?.user) {
+        try {
+          localStorage.removeItem("bidsphere_user");
+        } catch {}
+      }
     })();
     return () => { mounted = false; };
   }, [location]);
