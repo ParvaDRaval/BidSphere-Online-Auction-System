@@ -43,68 +43,52 @@ export default function CookiePolicy() {
         <div className="bg-white rounded-xl shadow-sm border p-8 mb-8">
           <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
             <Settings className="w-6 h-6 text-orange-600" />
-            Types of Cookies We Use
+            Cookies We Use
           </h2>
           
           <div className="space-y-6">
-            <div className="border-l-4 border-green-500 pl-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <h3 className="font-semibold text-lg">Essential Cookies</h3>
-                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Required</span>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="font-semibold text-lg">Essential Cookies</h3>
+              <p className="text-gray-600 mb-2">BidSphere uses only essential cookies required for authentication.</p>
+              
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-medium">User Authentication Token</h4>
+                    <p className="text-sm text-gray-600">Keeps you logged in as a regular user. Contains a secure JWT token.</p>
+                  </div>
+                </div>
               </div>
-              <p className="text-gray-600 mb-2">These cookies are necessary for our platform to function properly.</p>
-              <ul className="text-sm text-gray-500 space-y-1">
-                <li>• User authentication and session management</li>
-                <li>• Security tokens and fraud prevention</li>
-                <li>• Shopping cart and bidding functionality</li>
-                <li>• Load balancing and site stability</li>
-              </ul>
             </div>
 
-            <div className="border-l-4 border-blue-500 pl-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Settings className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-lg">Performance Cookies</h3>
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Optional</span>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h3 className="font-semibold text-lg">What We DON'T Use</h3>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-500" />
+                  <span className="text-sm">No tracking cookies</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-500" />
+                  <span className="text-sm">No advertising cookies</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-500" />
+                  <span className="text-sm">No analytics cookies</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-500" />
+                  <span className="text-sm">No third-party cookies</span>
+                </div>
               </div>
-              <p className="text-gray-600 mb-2">These cookies help us understand how our platform is being used.</p>
-              <ul className="text-sm text-gray-500 space-y-1">
-                <li>• Analytics and usage statistics</li>
-                <li>• Page load time monitoring</li>
-                <li>• Error tracking and bug fixes</li>
-                <li>• A/B testing and feature optimization</li>
-              </ul>
             </div>
 
-            <div className="border-l-4 border-purple-500 pl-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Cookie className="w-5 h-5 text-purple-600" />
-                <h3 className="font-semibold text-lg">Personalization Cookies</h3>
-                <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">Optional</span>
-              </div>
-              <p className="text-gray-600 mb-2">These cookies remember your preferences to enhance your experience.</p>
-              <ul className="text-sm text-gray-500 space-y-1">
-                <li>• Language and currency preferences</li>
-                <li>• Watchlist and saved searches</li>
-                <li>• Personalized recommendations</li>
-                <li>• Custom dashboard layout</li>
-              </ul>
-            </div>
-
-            <div className="border-l-4 border-orange-500 pl-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Info className="w-5 h-5 text-orange-600" />
-                <h3 className="font-semibold text-lg">Marketing Cookies</h3>
-                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">Optional</span>
-              </div>
-              <p className="text-gray-600 mb-2">These cookies help us show you relevant advertisements and content.</p>
-              <ul className="text-sm text-gray-500 space-y-1">
-                <li>• Ad campaign performance tracking</li>
-                <li>• Personalized advertising</li>
-                <li>• Social media integration</li>
-                <li>• Cross-site behavioral tracking</li>
-              </ul>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-sm">
+                <strong>Simple & Minimal:</strong> BidSphere only uses 1 essential cookie for user authentication. 
+                We don't track your behavior, show ads, or use analytics. Your privacy is important to us.
+              </p>
             </div>
           </div>
         </div>
@@ -113,34 +97,45 @@ export default function CookiePolicy() {
         <div className="bg-white rounded-xl shadow-sm border p-8 mb-8">
           <h2 className="text-2xl font-semibold mb-4">Cookie Duration</h2>
           
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                Session Cookies
-              </h3>
-              <div className="bg-green-50 rounded-lg p-4">
-                <p className="text-gray-600 mb-2">Deleted when you close your browser</p>
-                <ul className="text-sm text-gray-500 space-y-1">
-                  <li>• Temporary shopping cart items</li>
-                  <li>• Security tokens</li>
-                  <li>• Page navigation state</li>
-                </ul>
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="font-semibold text-lg mb-3">User Authentication Cookie</h3>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="font-medium">Duration: 7 days</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Your login session remains active for 7 days. You'll stay logged in even if you close your browser.
+                  After 7 days, you'll need to log in again.
+                </p>
               </div>
             </div>
-            
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                Persistent Cookies
-              </h3>
-              <div className="bg-blue-50 rounded-lg p-4">
-                <p className="text-gray-600 mb-2">Remain on your device for a set period</p>
-                <ul className="text-sm text-gray-500 space-y-1">
-                  <li>• Login preferences (30 days)</li>
-                  <li>• Analytics data (2 years)</li>
-                  <li>• Marketing tracking (90 days)</li>
-                </ul>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="font-semibold text-lg mb-3">Admin Authentication Cookie</h3>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span className="font-medium">Duration: 24 hours</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Admin sessions expire after 24 hours for security. This ensures admin access remains secure 
+                  and requires regular re-authentication.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-amber-800 mb-1">Security Features</h4>
+                  <p className="text-gray-700 text-sm">
+                    Both cookies use secure settings: HttpOnly (prevents JavaScript access), 
+                    Secure (HTTPS only), and SameSite (prevents cross-site requests).
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -215,61 +210,20 @@ export default function CookiePolicy() {
           <h2 className="text-2xl font-semibold mb-4">Third-Party Cookies</h2>
           
           <div className="space-y-4">
-            <p className="text-gray-600">
-              We work with trusted third-party services that may place cookies on your device:
-            </p>
-            
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="border rounded-lg p-4">
-                <h4 className="font-semibold mb-2">Payment Processors</h4>
-                <p className="text-sm text-gray-600">Secure payment processing and fraud prevention</p>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                <h3 className="font-semibold text-lg">No Third-Party Cookies</h3>
               </div>
-              
-              <div className="border rounded-lg p-4">
-                <h4 className="font-semibold mb-2">Analytics Services</h4>
-                <p className="text-sm text-gray-600">Google Analytics for website improvement</p>
-              </div>
-              
-              <div className="border rounded-lg p-4">
-                <h4 className="font-semibold mb-2">Social Media</h4>
-                <p className="text-sm text-gray-600">Sharing buttons and social login integration</p>
-              </div>
-              
-              <div className="border rounded-lg p-4">
-                <h4 className="font-semibold mb-2">Advertising Partners</h4>
-                <p className="text-sm text-gray-600">Relevant ad delivery and campaign tracking</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Your Rights */}
-        <div className="bg-white rounded-xl shadow-sm border p-8 mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Your Cookie Rights</h2>
-          
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-semibold">Right to Information</h4>
-                <p className="text-gray-600 text-sm">Know exactly what cookies we use and why</p>
-              </div>
+              <p className="text-gray-600">
+                BidSphere does not use any third-party cookies. We don't work with external services that place cookies on your device.
+              </p>
             </div>
             
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-semibold">Right to Consent</h4>
-                <p className="text-gray-600 text-sm">Choose which optional cookies to accept</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-semibold">Right to Withdraw</h4>
-                <p className="text-gray-600 text-sm">Change your cookie preferences at any time</p>
-              </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600">
+                <strong>Complete Privacy:</strong> Since we only use one essential authentication cookie, there are no third-party cookies from analytics, advertising, social media, or payment processors.
+              </p>
             </div>
           </div>
         </div>
@@ -302,7 +256,7 @@ export default function CookiePolicy() {
               to="/help" 
               className="bg-white text-orange-600 border border-orange-600 px-6 py-3 rounded-lg hover:bg-orange-50 transition-colors"
             >
-              Cookie Settings
+              Visit Help Center
             </Link>
           </div>
         </div>

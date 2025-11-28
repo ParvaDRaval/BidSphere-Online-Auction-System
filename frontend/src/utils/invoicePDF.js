@@ -108,16 +108,12 @@ export function generateInvoicePDF(auctionData, userData, deliveryData) {
               <span>₹${auctionData.final || auctionData.currentBid || '0'}</span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 3px 0; font-size: 9pt;">
-              <span>Platform Fee (5%):</span>
-              <span>₹${Math.round((auctionData.final || auctionData.currentBid || 0) * 0.05)}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding: 3px 0; font-size: 9pt;">
               <span>Tax:</span>
               <span>₹0</span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 2px solid #000; font-weight: bold; font-size: 10pt;">
               <span>Total Paid:</span>
-              <span>₹${Math.round((auctionData.final || auctionData.currentBid || 0) * 1.05)}</span>
+              <span>₹${auctionData.final || auctionData.currentBid || '0'}</span>
             </div>
           </div>
         </div>
