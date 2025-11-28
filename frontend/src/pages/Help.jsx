@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown, ChevronUp, BookOpen, MessageCircle, Mail, Clock, AlertCircle, HelpCircle, Star, Users, CreditCard, Package, Shield } from "lucide-react";
+import { ChevronDown, ChevronUp, BookOpen, MessageCircle, Mail, Clock, AlertCircle, HelpCircle, Star, Users, CreditCard, Package, Shield, Play, ExternalLink } from "lucide-react";
 
 export default function Help() {
   const [expandedSection, setExpandedSection] = useState(null);
@@ -46,7 +46,6 @@ export default function Help() {
       color: 'purple',
       items: [
         { title: 'Registration Fee', description: 'Pay your registration fee', link: '/registration-fee' },
-        { title: 'Payment Methods', description: 'Accepted payment options', link: '/contact' },
         { title: 'Platform Fees', description: 'Understand our fee structure', link: '/terms' },
         { title: 'Privacy Policy', description: 'How we protect your data', link: '/privacy' }
       ]
@@ -58,8 +57,7 @@ export default function Help() {
       color: 'orange',
       items: [
         { title: 'Add Delivery Address', description: 'Set your shipping address', link: '/delivery/create' },
-        { title: 'Track Orders', description: 'Monitor your deliveries', link: '/buyer-dashboard' },
-        { title: 'Delivery Info', description: 'Shipping and delivery details', link: '/contact' }
+        { title: 'Track Orders', description: 'Monitor your deliveries', link: '/buyer-dashboard' }
       ]
     },
     {
@@ -70,8 +68,8 @@ export default function Help() {
       items: [
         { title: 'Account Security', description: 'Keep your account safe', link: '/settings' },
         { title: 'Privacy Policy', description: 'Your data protection rights', link: '/privacy' },
-        { title: 'Terms of Service', description: 'Platform rules and policies', link: '/terms' },
-        { title: 'Report Issues', description: 'Get help with problems', link: '/feedback' }
+        { title: 'Report Issues', description: 'Get help with problems', link: '/feedback' },
+        { title: 'Terms of Service', description: 'Platform rules and policies', link: '/terms' }
       ]
     }
   ];
@@ -139,6 +137,40 @@ export default function Help() {
               </div>
             </Link>
           ))}
+        </div>
+      </div>
+
+      {/* Demo Video Section */}
+      <div className="max-w-6xl mx-auto px-6 pb-8">
+        <div className="bg-white border border-gray-200 rounded-xl p-8">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="flex-1">
+              <h2 className="text-2xl font-semibold mb-4 text-gray-900">Watch Our Demo Video</h2>
+              <p className="text-gray-600 mb-6">
+                Learn how to use BidSphere like a pro! Our comprehensive demo covers everything from creating auctions to winning bids.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <a 
+                  href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <Play className="w-5 h-5" />
+                  Watch on YouTube
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+            <div className="flex-shrink-0">
+              <div className="w-48 h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+                <div className="text-center">
+                  <Play className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                  <div className="text-sm font-medium text-gray-600">5:30</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -218,10 +250,6 @@ export default function Help() {
                   </div>
                 ))}
               </div>
-              
-              <button className="w-full mt-4 text-center text-indigo-600 hover:text-indigo-700 font-medium text-sm">
-                View All FAQs →
-              </button>
             </div>
           </div>
         </div>
