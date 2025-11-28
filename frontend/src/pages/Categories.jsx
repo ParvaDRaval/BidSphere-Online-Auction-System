@@ -7,7 +7,25 @@ function CategoryCard({ cat, onSelect }) {
   const img = cat?.image || null;
   const label = cat?.label || "Unknown";
   const value = cat?.value || "";
-  const imgSrc = img && (img.startsWith("http") || img.startsWith("/")) ? img : null;
+  const resolveCategoryImage = (imgVal) => {
+    if (!imgVal) return null;
+    const v = String(imgVal).trim();
+    if (v.startsWith("http") || v.startsWith("/")) return v;
+
+    // If the value already references an assets path or is a relative path, try to resolve it directly
+    const looksLikeAssetPath = v.startsWith("assets/") || v.startsWith("src/") || v.startsWith("./") || v.startsWith("../") || v.includes("/assets/");
+    try {
+      if (looksLikeAssetPath) {
+        return new URL(v, import.meta.url).href;
+      }
+      // Otherwise assume it's a filename under src/assets/categories
+      return new URL(`../assets/categories/${v}`, import.meta.url).href;
+    } catch (e) {
+      return null;
+    }
+  };
+  const imgSrc = resolveCategoryImage(img);
+
   const makePlaceholder = (text) => {
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='100%' height='100%' fill='%23e9ecef'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23808080' font-size='28' font-family='Arial, Helvetica, sans-serif'>${text}</text></svg>`;
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -16,15 +34,8 @@ function CategoryCard({ cat, onSelect }) {
   const bg = imgSrc || makePlaceholder(label);
   return (
     <button onClick={() => onSelect && onSelect(value)} className="group block rounded-lg bg-white shadow-sm overflow-hidden text-left">
-      <div
-        className="relative w-full h-40 sm:h-44 md:h-48 bg-gray-200"
-        style={{
-          backgroundImage: `url('${bg}')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-        aria-label={label}
-      >
+      <div className="relative w-full h-40 sm:h-44 md:h-48 bg-gray-200 overflow-hidden" aria-label={label}>
+        <img src={bg} alt={label} className="w-full h-full object-cover" />
         <div className="absolute left-3 bottom-3 bg-black/40 text-white px-2 py-1 rounded">
           <div className="text-sm font-medium">{label}</div>
         </div>

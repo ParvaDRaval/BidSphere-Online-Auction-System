@@ -22,10 +22,12 @@ function Navbar() {
       const storedUser = localStorage.getItem("bidsphere_user");
       if (storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
+          const parsed = JSON.parse(storedUser);
+          // Only accept object shapes for user; ignore raw strings to avoid showing a non-user
+          setUser(parsed && typeof parsed === 'object' ? parsed : null);
         } catch (e) {
-          // if parsing fails, store raw string
-          setUser(storedUser);
+          // if parsing fails, don't set a raw string as user (will show as anonymous)
+          setUser(null);
         }
       } else {
         setUser(null);
@@ -41,13 +43,16 @@ function Navbar() {
     }
     try {
       const storedAdmin = localStorage.getItem("bidsphere_admin");
-      setAdmin(storedAdmin ? JSON.parse(storedAdmin) : null);
+      const adm = storedAdmin ? JSON.parse(storedAdmin) : null;
+      setAdmin(adm && typeof adm === 'object' ? adm : null);
     } catch {setAdmin(null);}
   };
 
-  // derive user image and initials for avatar display
-  const userImage = user?.profilePhoto || user?.profilePhotoUrl || user?.avatar || user?.profilePicture || null;
-  const userInitials = ((user?.username || user?.email || 'U') + '')
+  // derive user image and initials for avatar display (defensive: only treat `user` as object)
+  const userObj = (user && typeof user === 'object') ? user : null;
+  const userImage = userObj?.profilePhoto || userObj?.profilePhotoUrl || userObj?.avatar || userObj?.profilePicture || null;
+  const userHandle = (userObj?.username || userObj?.email || '').toString().trim();
+  const userInitials = (userHandle ? userHandle : 'U')
     .split(' ')
     .map(s => s[0])
     .slice(0,2)
