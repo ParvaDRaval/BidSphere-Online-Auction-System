@@ -36,6 +36,11 @@ export default function DashboardSidebar({ role = "seller", active = "dashboard"
     .join("")
     .toUpperCase();
 
+  // prefer profile image fields from either fetched user or stored user
+  const userImage = (user && (user.profilePhoto || user.profilePhotoUrl || user.avatar || user.profilePicture))
+    || (storedUser && (storedUser.profilePhoto || storedUser.profilePhotoUrl || storedUser.avatar || storedUser.profilePicture))
+    || null;
+
   const isSeller = role === "seller";
   const accentBg = isSeller ? "bg-blue-50" : "bg-green-50";
   const accentText = isSeller ? "text-blue-600" : "text-green-600";
@@ -43,8 +48,12 @@ export default function DashboardSidebar({ role = "seller", active = "dashboard"
   return (
     <aside className="w-64 bg-white border-r border-gray-200 min-h-screen p-6">
       <div className="flex items-center gap-3 mb-8">
-        <div className={`w-12 h-12 rounded-full ${isSeller ? 'bg-blue-600' : 'bg-green-600'} text-white flex items-center justify-center font-semibold`}>
-          {initials || (isSeller ? "S" : "U")}
+        <div className={`w-12 h-12 rounded-full overflow-hidden ${isSeller ? 'bg-blue-600' : 'bg-green-600'} text-white flex items-center justify-center font-semibold`}>
+          {userImage ? (
+            <img src={userImage} alt={displayName} className="w-full h-full object-cover" />
+          ) : (
+            (initials || (isSeller ? "S" : "U"))
+          )}
         </div>
         <div>
           <div className="font-semibold text-gray-900">{displayName || "Loading..."}</div>
