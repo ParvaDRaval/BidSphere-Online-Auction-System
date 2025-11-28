@@ -4,12 +4,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import {
   getAuction,
-  getCurrentUser,
   createWinningUpiPayment,
   createWinningCodPayment,
   getPayment,
   verifyAuctionPayment,
 } from '../api';
+import { useUser } from '../contexts/UserContext';
 
 function formatINR(v) {
   try {
@@ -24,7 +24,7 @@ export default function PayFees() {
   const navigate = useNavigate();
 
   const [auction, setAuction] = useState(null);
-  const [user, setUser] = useState(null);
+  const { user: ctxUser, loading: userLoading } = useUser() || {};
 
   const [payment, setPayment] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -42,15 +42,16 @@ export default function PayFees() {
     async function init() {
       setLoading(true);
       try {
-        const [meRes, aucRes] = await Promise.allSettled([getCurrentUser(), routeId ? getAuction(routeId) : Promise.resolve(null)]);
-        if (!mounted) return;
-        if (meRes.status === 'fulfilled') setUser(meRes.value?.user || null);
-        if (aucRes.status === 'fulfilled' && aucRes.value) setAuction(aucRes.value?.auction || aucRes.value || null);
+        if (routeId) {
+          const aucRes = await getAuction(routeId).catch(() => null);
+          if (!mounted) return;
+          setAuction(aucRes?.auction || aucRes || null);
+        }
       } catch (err) {
         console.error(err);
         setError(err?.message || String(err));
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
     init();
@@ -65,7 +66,7 @@ export default function PayFees() {
   async function createCodPayment(e) {
     e && e.preventDefault();
     setError(null);
-    if (!user) return navigate('/login');
+    if (!ctxUser) return navigate('/login');
     if (!routeId) return setError('Missing auction id');
 
     try {
@@ -85,7 +86,7 @@ export default function PayFees() {
   async function createUpiPayment(e) {
     e && e.preventDefault();
     setError(null);
-    if (!user) return navigate('/login');
+    if (!ctxUser) return navigate('/login');
     if (!routeId) return setError('Missing auction id');
 
     try {
@@ -110,7 +111,7 @@ export default function PayFees() {
 
     try {
       setVerifying(true);
-      await verifyAuctionPayment(routeId, payment._id || payment.paymentId, { upiAccountName: payerName || user?.username || user?.fullname || '', upiTxnId: txnId });
+      await verifyAuctionPayment(routeId, payment._id || payment.paymentId, { upiAccountName: payerName || ctxUser?.username || ctxUser?.fullname || '', upiTxnId: txnId });
       toast.info('Verification requested — admin will verify shortly');
       navigate(`/auction/${routeId}`);
     } catch (err) {
@@ -216,7 +217,7 @@ export default function PayFees() {
                   </div>
                   <div className="mt-2">
                     <label className="text-sm block mb-1">Payer Name (optional)</label>
-                    <input value={payerName} onChange={(e) => setPayerName(e.target.value)} className="w-full p-2 border rounded" placeholder={user?.username || user?.fullname || ''} />
+                    <input value={payerName} onChange={(e) => setPayerName(e.target.value)} className="w-full p-2 border rounded" placeholder={ctxUser?.username || ctxUser?.fullname || ''} />
                   </div>
                   <div className="mt-4">
                     <button onClick={submitVerification} disabled={verifying || !txnId} className={`px-4 py-2 rounded text-white ${verifying || !txnId ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}>

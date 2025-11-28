@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { Link, useNavigate } from "react-router-dom";
-import { getWatchlist, removeFromWatchlist, getCurrentUser } from "../api";
+import { getWatchlist, removeFromWatchlist } from "../api";
+import DashboardSidebar from "../components/DashboardSidebar";
 
 function WatchRow({ w, onRemove }) {
   // Debug: Log the raw data
@@ -95,7 +96,6 @@ function WatchRow({ w, onRemove }) {
 
 export default function Watchlist() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [watchlist, setWatchlist] = useState([]);
   const [q, setQ] = useState("");
@@ -105,10 +105,6 @@ export default function Watchlist() {
     async function load() {
       setLoading(true);
       try {
-        const me = await getCurrentUser().catch(() => null);
-        if (!mounted) return;
-        setUser(me?.user || me || null);
-
         const res = await getWatchlist();
         if (!mounted) return;
 
@@ -182,49 +178,43 @@ export default function Watchlist() {
   });
 
   return (
-    <div className="min-h-screen bg-[#fdfbf6] p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold">Watchlist</h1>
-          <div className="text-sm text-gray-600">
-            Showing {watchlist.length} items
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar - match seller dashboard style */}
+      <DashboardSidebar role="buyer" active="watchlist" />
 
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-gray-600">
-              All the auctions you've added to your watchlist.
-            </div>
-            <input
-              placeholder="Search auction by name..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="border rounded-md px-3 py-2 text-sm"
-            />
+      {/* Main content */}
+      <main className="flex-1 p-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold">Watchlist</h1>
+            <div className="text-sm text-gray-600">Showing {watchlist.length} items</div>
           </div>
 
-          {loading ? (
-            <div className="text-center py-8 text-gray-600">
-              Loading watchlist...
+          <div className="bg-white border rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm text-gray-600">All the auctions you've added to your watchlist.</div>
+              <input
+                placeholder="Search auction by name..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm"
+              />
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-8 text-gray-600">
-              No items in watchlist.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filtered.map((w, i) => (
-                <WatchRow
-                  key={w._id || w.auctionId || i}
-                  w={w}
-                  onRemove={handleRemove}
-                />
-              ))}
-            </div>
-          )}
+
+            {loading ? (
+              <div className="text-center py-8 text-gray-600">Loading watchlist...</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-8 text-gray-600">No items in watchlist.</div>
+            ) : (
+              <div className="space-y-3">
+                {filtered.map((w, i) => (
+                  <WatchRow key={w._id || w.auctionId || i} w={w} onRemove={handleRemove} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

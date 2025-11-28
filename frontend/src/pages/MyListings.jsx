@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyAuctions, deleteAuction } from "../api";
+import DashboardSidebar from "../components/DashboardSidebar";
 import { toast } from "react-toastify";
 
 function ListingRow({ a, onDelete, deleting }) {
@@ -74,25 +75,30 @@ export default function MyListings() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f3f3] p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold">My Listings</h1>
-          <Link to="/create-auction" className="bg-yellow-400 px-4 py-2 rounded font-medium">Create Auction</Link>
-        </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      <DashboardSidebar role="seller" active="my-listings" />
 
-        <div className="bg-white border rounded-lg p-4">
-          {loading ? (
-            <div>Loading your listings...</div>
-          ) : auctions.length === 0 ? (
-            <div className="text-sm text-gray-500">You have no listings yet.</div>
-          ) : (
-            <div className="space-y-4">
-              {auctions.map((a) => (
-                <ListingRow key={a._id} a={a} onDelete={handleDelete} deleting={deletingId === a._id} />
-              ))}
-            </div>
-          )}
+      {/* Main Content */}
+      <div className="flex-1 p-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold">My Listings</h1>
+            <Link to="/create-auction" className="bg-yellow-400 px-4 py-2 rounded font-medium">Create Auction</Link>
+          </div>
+
+          <div className="bg-white border rounded-lg p-6">
+            {loading ? (
+              <div>Loading your listings...</div>
+            ) : auctions.length === 0 ? (
+              <div className="text-sm text-gray-500">You have no listings yet.</div>
+            ) : (
+              <div className="space-y-4">
+                {auctions.map((a) => (
+                  <ListingRow key={a._id} a={a} onDelete={handleDelete} deleting={deletingId === a._id} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

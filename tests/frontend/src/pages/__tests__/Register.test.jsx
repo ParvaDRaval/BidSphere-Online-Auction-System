@@ -4,6 +4,16 @@ import { MemoryRouter } from 'react-router-dom';
 import Register from '../Register';
 import { vi } from 'vitest';
 
+const toastMock = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+}));
+
+vi.mock('react-toastify', () => ({
+  toast: toastMock,
+}));
+
 // Mock the api module
 vi.mock('../../api', () => ({
   registerUser: vi.fn(),
@@ -25,12 +35,15 @@ import { registerUser } from '../../api';
 describe('Register page', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    toastMock.success.mockReset();
+    toastMock.error.mockReset();
+    toastMock.info.mockReset();
+    mockNavigate.mockClear();
   });
 
   it('renders form fields and submits data to registerUser', async () => {
     // Arrange
     registerUser.mockResolvedValue({ message: 'Verification OTP sent' });
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(
       <MemoryRouter>
@@ -60,11 +73,9 @@ describe('Register page', () => {
 
     // alert called and navigate called to verifyemail
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalled();
+      expect(toastMock.success).toHaveBeenCalledWith('Verification OTP sent');
       expect(mockNavigate).toHaveBeenCalledWith('/verifyemail', { state: { email: 'test@example.com' } });
     });
-
-    alertSpy.mockRestore();
   });
 
   it('renders the register banner image', () => {
@@ -78,7 +89,6 @@ describe('Register page', () => {
   });
 
   it('validates required fields', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     render(
       <MemoryRouter>
         <Register />
@@ -86,12 +96,10 @@ describe('Register page', () => {
     );
     const submitBtn = screen.getByRole('button', { name: /Create Account/i });
     fireEvent.click(submitBtn);
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Please fill out all fields.'));
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Please fill out all fields.'));
   });
 
   it('validates email format', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     render(
       <MemoryRouter>
         <Register />
@@ -107,12 +115,10 @@ describe('Register page', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
     fireEvent.click(submitBtn);
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Please enter a valid email address.'));
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Please enter a valid email address.'));
   });
 
   it('validates password length', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     render(
       <MemoryRouter>
         <Register />
@@ -128,13 +134,11 @@ describe('Register page', () => {
     fireEvent.change(passwordInput, { target: { value: 'short' } });
     fireEvent.click(submitBtn);
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Password must be at least 8 characters long.'));
-    alertSpy.mockRestore();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Password must be at least 8 characters long.'));
   });
 
   it('shows alert on registerUser failure and resets form', async () => {
     registerUser.mockRejectedValue(new Error('Email already exists'));
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(
       <MemoryRouter>
@@ -152,21 +156,16 @@ describe('Register page', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
     fireEvent.click(submitBtn);
 
-    await waitFor(() => {
-      expect(registerUser).toHaveBeenCalled();
-      expect(alertSpy).toHaveBeenCalledWith('Email already exists');
-      // form should be reset in finally block
-      expect(screen.getByPlaceholderText('Name').value).toBe('');
-      expect(screen.getByPlaceholderText('Email ID').value).toBe('');
-      expect(screen.getByPlaceholderText('Password').value).toBe('');
-    });
-
-    alertSpy.mockRestore();
+    await waitFor(() => expect(registerUser).toHaveBeenCalled());
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Email already exists'));
+    // form should be reset in finally block
+    expect(screen.getByPlaceholderText('Name').value).toBe('');
+    expect(screen.getByPlaceholderText('Email ID').value).toBe('');
+    expect(screen.getByPlaceholderText('Password').value).toBe('');
   });
 
   it('shows default alert message on success when no message is returned', async () => {
     registerUser.mockResolvedValue({}); // No message property
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(
       <MemoryRouter>
@@ -180,15 +179,12 @@ describe('Register page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('Verification OTP sent to your email');
+      expect(toastMock.success).toHaveBeenCalledWith('Verification OTP sent to your email');
     });
-
-    alertSpy.mockRestore();
   });
 
   it('shows default alert message on failure when no message is returned', async () => {
     registerUser.mockRejectedValue({}); // No message property
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     render(
       <MemoryRouter>
@@ -202,9 +198,80 @@ describe('Register page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('Registration failed');
+      expect(toastMock.error).toHaveBeenCalledWith('Registration failed');
+    });
+  });
+
+  it('resets form after successful registration', async () => {
+    registerUser.mockResolvedValue({ message: 'Verification OTP sent' });
+
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    const nameInput = screen.getByPlaceholderText('Name');
+    const emailInput = screen.getByPlaceholderText('Email ID');
+    const passwordInput = screen.getByPlaceholderText('Password');
+
+    fireEvent.change(nameInput, { target: { value: 'Test User' } });
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
+
+    await waitFor(() => {
+      expect(registerUser).toHaveBeenCalled();
     });
 
-    alertSpy.mockRestore();
+    // Form should be reset in finally block
+    expect(nameInput.value).toBe('');
+    expect(emailInput.value).toBe('');
+    expect(passwordInput.value).toBe('');
+  });
+
+  it('renders navigation links correctly', () => {
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Already have an account?')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Log in/i })).toHaveAttribute('href', '/login');
+  });
+
+  it('handles form input changes correctly', () => {
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    const nameInput = screen.getByPlaceholderText('Name');
+    const emailInput = screen.getByPlaceholderText('Email ID');
+    const passwordInput = screen.getByPlaceholderText('Password');
+
+    fireEvent.change(nameInput, { target: { value: 'John Doe' } });
+    fireEvent.change(emailInput, { target: { value: 'john@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'securepassword' } });
+
+    expect(nameInput.value).toBe('John Doe');
+    expect(emailInput.value).toBe('john@example.com');
+    expect(passwordInput.value).toBe('securepassword');
+  });
+
+  it('has proper form structure and accessibility', () => {
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('heading', { name: /Create an account/i })).toBeInTheDocument();
+    expect(screen.getAllByDisplayValue('')).toHaveLength(3); // Three empty inputs
+    expect(screen.getByPlaceholderText('Name')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Email ID')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Password')).toBeInTheDocument();
   });
 });

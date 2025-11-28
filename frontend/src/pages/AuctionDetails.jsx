@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   getAuction,
   placeBid,
-  getCurrentUser,
   listPayments,
   setAutoBid,
   editAutoBid,
@@ -13,7 +12,9 @@ import {
   addToWatchlist,
   removeFromWatchlist,
   getWatchlist,
+  getUserById,
 } from "../api";
+import { useUser } from "../contexts/UserContext";
 import { toast } from "react-toastify";
 import SellerRating from "./SellerRating";
 import SellerRatingSummary from "../components/SellerRatingSummary";
@@ -35,6 +36,17 @@ function AuctionDetails() {
   const intervalRef = useRef(null);
   const [bidAmount, setBidAmount] = useState("");
   const [placingBid, setPlacingBid] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  useEffect(() => {
+    // reset selected image when auction images change
+    try {
+      const len = (auction?.item?.images || []).length;
+      setSelectedImageIndex(0);
+    } catch (e) {
+      // ignore
+    }
+  }, [auction?.item?.images?.length]);
   
   // Auto-bid
   const [autoBidEnabled, setAutoBidEnabled] = useState(false);
@@ -53,6 +65,13 @@ function AuctionDetails() {
   const [paymentCheckLoading, setPaymentCheckLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
 
+  // Seller info (normalized) - declared with other hooks to keep Hooks order stable
+  const [sellerInfo, setSellerInfo] = useState(null);
+
+  
+
+  const { user: ctxUser, loading: userLoading } = useUser() || {};
+
   // Fetch auction
   useEffect(() => {
     let mounted = true;
@@ -70,7 +89,7 @@ function AuctionDetails() {
           setWatchlisted(true);
         }
       } catch (err) {
-        console.error("getAuction error:", err);
+        console.debug("getAuction error (suppressed):", err?.message || err);
         if (mounted) setError(err.message || "Failed to load auction");
       } finally {
         if (mounted) setLoading(false);
@@ -80,27 +99,46 @@ function AuctionDetails() {
     return () => (mounted = false);
   }, [id]);
 
-  // Fetch current user early to avoid UI flash for sellers
+  // Sync currentUser from centralized UserContext to avoid duplicate fetches
+  useEffect(() => {
+    setCurrentUser(ctxUser || null);
+  }, [ctxUser]);
+
+  // Load seller info (if auction.createdBy is an id) — unconditional hook to keep order stable
   useEffect(() => {
     let mounted = true;
-    (async function fetchMe() {
-      try {
-        const me = await getCurrentUser().catch(() => null);
-        if (!mounted) return;
-        const user = me?.user || null;
-        setCurrentUser(user);
-      } catch (err) {
-        // ignore
+    async function fetchSeller() {
+      const s = auction?.createdBy;
+      const sellerIdLocal = typeof s === 'string' ? s : (s?._id || s?.id || null);
+      // if auction includes full seller object, use it
+      if (s && typeof s === 'object' && (s.username || s.name || s.email)) {
+        setSellerInfo(s);
+        return;
       }
-    })();
+      if (!sellerIdLocal) {
+        setSellerInfo(null);
+        return;
+      }
+      try {
+        const res = await getUserById(sellerIdLocal).catch(() => null);
+        if (!mounted) return;
+        const user = res?.user || res || null;
+        setSellerInfo(user);
+      } catch (e) {
+        if (!mounted) return;
+        setSellerInfo(null);
+      }
+    }
+    fetchSeller();
     return () => (mounted = false);
-  }, []);
+  }, [auction?.createdBy]);
 
   // Check if auction is in user's watchlist
   useEffect(() => {
     let mounted = true;
     async function checkWatchlist() {
-      if (!id || !currentUser?._id) return;
+      const uid = ctxUser?._id || currentUser?._id;
+      if (!id || !uid) return;
       try {
         const res = await getWatchlist();
         if (!mounted) return;
@@ -115,7 +153,7 @@ function AuctionDetails() {
     }
     checkWatchlist();
     return () => (mounted = false);
-  }, [id, currentUser?._id]);
+  }, [id, ctxUser?._id, currentUser?._id]);
 
   // fetch current user and check payment status for this auction
   useEffect(() => {
@@ -124,9 +162,8 @@ function AuctionDetails() {
       if (!auction?._id) return;
       setPaymentCheckLoading(true);
       try {
-        const me = await getCurrentUser().catch(() => null);
+        const user = ctxUser || currentUser || null;
         if (!mounted) return;
-        const user = me?.user || null;
         setCurrentUser(user);
 
         if (!user) {
@@ -148,10 +185,35 @@ function AuctionDetails() {
           // ignore and continue to payment lookup
         }
 
-         // call admin payments list (backend supports filtering)
-        const res = await listPayments({ auctionId: auction._id, bidderId: user._id });
-        // res.data is array
-        const payments = res?.data || [];
+        // call admin payments list (backend supports filtering)
+        let payments = [];
+        try {
+          const res = await listPayments({ auctionId: auction._id, bidderId: user._id });
+          // some endpoints can return HTML error pages (404) which will cause JSON parse errors
+          // normalize response shape defensively
+          if (!res) {
+            payments = [];
+          } else if (typeof res === 'string' && res.trim().startsWith('<')) {
+            console.warn('listPayments returned HTML instead of JSON; treating as no payments');
+            payments = [];
+          } else {
+            payments = res?.data || [];
+          }
+        } catch (payErr) {
+          // backend may return an HTML error page (404) causing JSON parse error in the client wrapper
+          // suppress noisy stack traces for expected 404/non-JSON responses
+          try {
+            const msg = payErr?.message || String(payErr || 'listPayments failed');
+            if (msg.includes('<!DOCTYPE') || msg.toLowerCase().includes('html') || payErr instanceof SyntaxError) {
+              console.debug('listPayments returned non-JSON; treating as empty payments');
+            } else {
+              console.debug('listPayments error (suppressed):', msg);
+            }
+          } catch (e) {
+            // ignore logging errors
+          }
+          payments = [];
+        }
         // consider multiple backend-paid statuses (admin sets 'SUCCESS')
         const paidStatuses = ["CAPTURED", "SUCCESS", "PAID", "COMPLETED"];
         const paid = payments.find((p) => paidStatuses.includes((p.status || "").toUpperCase()));
@@ -164,7 +226,7 @@ function AuctionDetails() {
           setPaymentStatus(pending ? pending.status : null);
         }
       } catch (err) {
-        console.error("checkUserAndPayment error:", err);
+        console.debug("checkUserAndPayment error (suppressed):", err?.message || err);
         setHasPaid(false);
         setPaymentStatus(null);
       } finally {
@@ -173,13 +235,14 @@ function AuctionDetails() {
     }
     checkUserAndPayment();
     return () => (mounted = false);
-  }, [auction?._id]);
+  }, [auction?._id, ctxUser?._id, currentUser?._id]);
 
   // Fetch auto-bid status
   useEffect(() => {
     let mounted = true;
     async function fetchAutoBid() {
-      if (!auction?._id || !currentUser?._id) return;
+      const uid = ctxUser?._id || currentUser?._id;
+      if (!auction?._id || !uid) return;
       try {
         const data = await getUserAutoBid(auction._id);
         if (!mounted) return;
@@ -189,22 +252,25 @@ function AuctionDetails() {
           setAutoBidAmount(data.autoBid.maxLimit.toString());
         }
       } catch (err) {
-        console.error("fetchAutoBid error:", err);
+        console.debug("fetchAutoBid error (suppressed):", err?.message || err);
       }
     }
     fetchAutoBid();
     return () => (mounted = false);
-  }, [auction?._id, currentUser?._id]);
+  }, [auction?._id, ctxUser?._id, currentUser?._id]);
 
   // Countdown timer
   useEffect(() => {
     function compute() {
+      // if auction is UPCOMING, countdown to startTime; otherwise countdown to endTime
+      const startTime = auction?.startTime || auction?.startsAt || auction?.start;
       const endTime = auction?.endTime || auction?.endsAt || auction?.end;
-      if (!endTime) {
+      const targetTime = (auction?.status === 'UPCOMING' && startTime) ? startTime : endTime;
+      if (!targetTime) {
         setTimeLeft({ days: "--", hours: "--", mins: "--", secs: "--" });
         return;
       }
-      const end = new Date(endTime).getTime();
+      const end = new Date(targetTime).getTime();
       if (isNaN(end)) {
         setTimeLeft({ days: "--", hours: "--", mins: "--", secs: "--" });
         return;
@@ -262,7 +328,7 @@ function AuctionDetails() {
       setBidAmount("");
       toast.success("Bid placed successfully!");
     } catch (err) {
-      console.error("placeBid error:", err);
+      console.debug("placeBid error (suppressed):", err?.message || err);
       toast.error(err?.message || "Failed to place bid");
     } finally {
       setPlacingBid(false);
@@ -310,7 +376,7 @@ function AuctionDetails() {
       }
       setShowAutoBidModal(false);
     } catch (err) {
-      console.error("handleSetupAutoBid error:", err);
+      console.debug("handleSetupAutoBid error (suppressed):", err?.message || err);
       toast.error(err?.message || "Failed to set up auto-bid");
     } finally {
       setAutoBidLoading(false);
@@ -349,7 +415,7 @@ function AuctionDetails() {
         toast.success("Auto-bid deactivated");
       }
     } catch (err) {
-      console.error("handleToggleAutoBid error:", err);
+      console.debug("handleToggleAutoBid error (suppressed):", err?.message || err);
       toast.error(err?.message || "Failed to toggle auto-bid");
       setAutoBidEnabled(!enabled);
     } finally {
@@ -432,14 +498,27 @@ function AuctionDetails() {
 
   const images = auction?.item?.images || [];
   const seller = auction?.createdBy;
-  const displaySellerName = seller?.username || seller?.name || (seller?.email ? seller.email.split("@")[0] : "Unknown");
+  const sellerId = typeof seller === 'string' ? seller : (seller?._id || seller?.id || null);
+  // Prefer fetched `sellerInfo` when available, else fall back to auction.createdBy
+  const effectiveSeller = sellerInfo || (seller && typeof seller === 'object' ? seller : null);
+  let displaySellerName = 'Unknown';
+  if (!effectiveSeller && typeof seller === 'string') displaySellerName = seller;
+  else if (effectiveSeller) {
+    displaySellerName = effectiveSeller?.username || effectiveSeller?.name || effectiveSeller?.displayName || effectiveSeller?.fullName || (effectiveSeller?.email ? effectiveSeller.email.split("@")[0] : null) || `Seller${String(sellerId || '').slice(0,6)}`;
+  }
+  // Prefer common profile photo field names if available
+  const sellerImage = effectiveSeller?.profilePhoto || effectiveSeller?.profilePhotoUrl || effectiveSeller?.avatar || effectiveSeller?.profilePicture || null;
   // Prefer topBids[0] amount when available (reflects highest bid), otherwise fall back to auction.currentBid or startingPrice
   const currentPrice = (topBids && topBids[0] && (topBids[0].amount || topBids[0].price))
     || (auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice);
   const displayCurrentPrice = currentPrice != null ? Number(currentPrice).toLocaleString() : '-';
-  const isSeller = currentUser?._id && seller?._id && currentUser._id.toString() === seller._id.toString();
+  const isSeller = currentUser?._id && sellerId && currentUser._id.toString() === String(sellerId);
   const isAuctionLive = auction?.status === "LIVE";
   const isAuctionEnded = auction?.status === 'ENDED';
+  const isUpcoming = auction?.status === 'UPCOMING';
+  const countdownTitle = isUpcoming ? 'AUCTION STARTS IN' : 'AUCTION ENDS IN';
+  const countdownDateLabel = isUpcoming ? 'Starts:' : 'Ends:';
+  const countdownTargetDate = isUpcoming ? (auction?.startTime || auction?.startsAt || auction?.start) : (auction?.endTime || auction?.endsAt || auction?.end);
   // determine top bidder (may be stored in auction.auctionWinner or topBids[0])
   const topBidderId = (
     (auction && (auction.auctionWinner || auction.currentWinner)) ||
@@ -478,16 +557,42 @@ function AuctionDetails() {
 
               <div className="w-full h-96 bg-gray-100 rounded overflow-hidden mb-4">
                 {images.length > 0 ? (
-                  <img src={images[0]} alt={auction?.item?.name || "Auction"} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">No image available</div>
-                )}
+                    <div className="w-full h-full relative flex items-center justify-center bg-white">
+                      <img src={images[selectedImageIndex]} alt={auction?.item?.name || "Auction"} className="max-w-full max-h-full object-contain" />
+                      {images.length > 1 && (
+                        <>
+                          <button
+                            aria-label="Previous image"
+                            onClick={() => setSelectedImageIndex((i) => (i - 1 + images.length) % images.length)}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white px-2 py-2 rounded-full shadow"
+                          >
+                            ‹
+                          </button>
+                          <button
+                            aria-label="Next image"
+                            onClick={() => setSelectedImageIndex((i) => (i + 1) % images.length)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white px-2 py-2 rounded-full shadow"
+                          >
+                            ›
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">No image available</div>
+                  )}
               </div>
 
               {images.length > 1 && (
                 <div className="flex items-center gap-3 overflow-x-auto mb-2">
                   {images.slice(0,6).map((src,i) => (
-                    <img key={i} src={src} alt={`thumb-${i}`} className="w-20 h-14 object-cover rounded border" />
+                    <img
+                      key={i}
+                      src={src}
+                      alt={`thumb-${i}`}
+                      onClick={() => setSelectedImageIndex(i)}
+                      className={`w-20 h-14 object-cover rounded border cursor-pointer ${i === selectedImageIndex ? 'ring-2 ring-yellow-400' : ''}`}
+                    />
                   ))}
                 </div>
               )}
@@ -496,33 +601,59 @@ function AuctionDetails() {
 
           <aside className="lg:col-span-4">
             <div className="sticky top-6 space-y-4">
-              <div className="bg-yellow-100 p-4 rounded-lg shadow">
-                <div className="text-sm text-gray-700 font-semibold">AUCTION ENDS IN</div>
-                <div className="mt-3 grid grid-cols-4 gap-2">
-                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{timeLeft.days}</div>
-                    <div className="text-xs">DAYS</div>
-                  </div>
-                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{timeLeft.hours}</div>
-                    <div className="text-xs">HOURS</div>
-                  </div>
-                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{timeLeft.mins}</div>
-                    <div className="text-xs">MINS</div>
-                  </div>
-                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{timeLeft.secs}</div>
-                    <div className="text-xs">SECS</div>
+                {/* Seller Info Card (visible even when user hasn't paid) - moved above countdown */}
+                <div className="mt-0">
+                  <div className="bg-white p-4 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      {sellerImage ? (
+                        <img src={sellerImage} alt={displaySellerName} className="w-10 h-10 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{String(displaySellerName).slice(0,2).toUpperCase()}</div>
+                      )}
+                      <div>
+                        <button 
+                          onClick={() => {
+                            if (sellerId && /^[0-9a-fA-F]{24}$/.test(String(sellerId))) {
+                              navigate(`/seller/${sellerId}`);
+                            } else {
+                              toast.error("Invalid seller information");
+                            }
+                          }}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          {displaySellerName}
+                        </button>
+                        <div className="text-xs text-gray-500">Verified Seller</div>
+                      </div>
+                    </div>
+                    {isAuctionLive && sellerId && (
+                       <SellerRatingSummary sellerId={sellerId} />
+                    )}
                   </div>
                 </div>
-                <div className="text-xs text-gray-600 mt-2">Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}</div>
-              </div>
 
-              {/* Show seller rating before payment so users can evaluate seller */}
-              {seller?._id && (
-                <SellerRatingSummary sellerId={seller._id} />
-              )}
+                <div className="bg-yellow-100 p-4 rounded-lg shadow">
+                  <div className="text-sm text-gray-700 font-semibold">{countdownTitle}</div>
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold">{timeLeft.days}</div>
+                      <div className="text-xs">DAYS</div>
+                    </div>
+                    <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold">{timeLeft.hours}</div>
+                      <div className="text-xs">HOURS</div>
+                    </div>
+                    <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold">{timeLeft.mins}</div>
+                      <div className="text-xs">MINS</div>
+                    </div>
+                    <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold">{timeLeft.secs}</div>
+                      <div className="text-xs">SECS</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-600 mt-2">Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}</div>
+                </div>
 
               <div className="bg-white p-4 rounded-lg border">
                 <div className="grid grid-cols-2 gap-3 mb-3">
@@ -571,8 +702,8 @@ function AuctionDetails() {
                         setWatchlisted(false);
                         toast.info("Removed from watchlist");
                       }
-                    } catch (err) {
-                      console.error("watchlist error:", err);
+                      } catch (err) {
+                      console.debug("watchlist error (suppressed):", err?.message || err);
                       toast.error(err?.message || "Failed to update watchlist");
                     } finally {
                       setWatchlistLoading(false);
@@ -602,6 +733,7 @@ function AuctionDetails() {
               <div className="bg-white p-4 rounded-lg shadow">
                 <h4 className="font-semibold mb-2">Live Auction Activity</h4>
                 <div className="text-sm text-gray-500">{topBids.length === 0 ? 'No bids yet' : `Top bid: ₹${topBids[0]?.amount}`}</div>
+                <div className="text-xs text-gray-600 mt-2">{countdownDateLabel} {countdownTargetDate ? new Date(countdownTargetDate).toLocaleString() : "–"}</div>
               </div>
             </div>
           </aside>
@@ -653,11 +785,31 @@ function AuctionDetails() {
             {/* Main Image */}
             <div className="w-full h-96 bg-gray-100 rounded overflow-hidden mb-4">
               {images.length > 0 ? (
-                <img 
-                  src={images[0]} 
-                  alt={auction?.item?.name || "Auction"} 
-                  className="w-full h-full object-cover" 
-                />
+                <div className="w-full h-full relative flex items-center justify-center bg-white">
+                  <img
+                    src={images[selectedImageIndex]}
+                    alt={auction?.item?.name || "Auction"}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        aria-label="Previous image"
+                        onClick={() => setSelectedImageIndex((i) => (i - 1 + images.length) % images.length)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white px-3 py-2 rounded-full shadow"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        aria-label="Next image"
+                        onClick={() => setSelectedImageIndex((i) => (i + 1) % images.length)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white px-3 py-2 rounded-full shadow"
+                      >
+                        ›
+                      </button>
+                    </>
+                  )}
+                </div>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">
                   No image available
@@ -673,7 +825,8 @@ function AuctionDetails() {
                     key={i} 
                     src={src} 
                     alt={`thumb-${i}`} 
-                    className="w-20 h-14 object-cover rounded border cursor-pointer hover:border-blue-500" 
+                    onClick={() => setSelectedImageIndex(i)}
+                    className={`w-20 h-14 object-cover rounded border cursor-pointer hover:border-blue-500 ${i === selectedImageIndex ? 'ring-2 ring-yellow-400' : ''}`}
                   />
                 ))}
                 {images.length > 6 && (
@@ -719,13 +872,17 @@ function AuctionDetails() {
           <div className="sticky top-6 space-y-4">
               {/* Seller Info */}
             <div className="bg-white p-4 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{displaySellerName.slice(0,2).toUpperCase()}</div>
+                <div className="flex items-center gap-3">
+                {sellerImage ? (
+                  <img src={sellerImage} alt={displaySellerName} className="w-10 h-10 rounded-full object-cover" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{String(displaySellerName).slice(0,2).toUpperCase()}</div>
+                )}
                 <div>
                   <button 
                     onClick={() => {
-                      if (seller?._id && /^[0-9a-fA-F]{24}$/.test(seller._id)) {
-                        navigate(`/seller/${seller._id}`);
+                      if (sellerId && /^[0-9a-fA-F]{24}$/.test(String(sellerId))) {
+                        navigate(`/seller/${sellerId}`);
                       } else {
                         toast.error("Invalid seller information");
                       }
@@ -737,14 +894,15 @@ function AuctionDetails() {
                   <div className="text-xs text-gray-500">Verified Seller</div>
                 </div>
               </div>
-              {isAuctionLive && seller?._id && (
-                 <SellerRatingSummary sellerId={seller._id} />
+              {isAuctionLive && sellerId && (
+                 <SellerRatingSummary sellerId={sellerId} />
               )}
+                {/* seller debug removed */}
               {/* Show rating form when auction ended and current user is winner and has paid */}
-              {auction?.status === 'ENDED' && isTopBidder && hasPaid && currentUser?._id && seller?._id && (
+              {auction?.status === 'ENDED' && isTopBidder && hasPaid && currentUser?._id && sellerId && (
                 <RatingForm
                   auctionId={auction._id}
-                  sellerId={seller._id}
+                  sellerId={sellerId}
                   raterId={currentUser._id}
                   onSubmitted={async () => {
                     // refresh seller rating display
@@ -787,7 +945,8 @@ function AuctionDetails() {
 
             {/* Countdown Timer */}
             <div className="bg-yellow-100 p-4 rounded-lg shadow">
-              <div className="text-sm text-gray-700 font-semibold">AUCTION ENDS IN</div>
+              <div className="text-sm text-gray-700 font-semibold">{countdownTitle}</div>
+                {/* Show STARTS IN when upcoming */}
               <div className="mt-3 grid grid-cols-4 gap-2">
                 <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold">{timeLeft.days}</div>
@@ -807,7 +966,7 @@ function AuctionDetails() {
                 </div>
               </div>
               <div className="text-xs text-gray-600 mt-2">
-                Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}
+                {countdownDateLabel} {countdownTargetDate ? new Date(countdownTargetDate).toLocaleString() : "–"}
               </div>
             </div>
 
@@ -1005,11 +1164,15 @@ function AuctionDetails() {
                 ) : (
                   <>
                     {topBids.slice(0, 5).map((bid, i) => {
-                      const bidderData = bid?.userId || bid?.bidderId;
-                      const bidderName = bidderData?.username || 
-                                        bidderData?.name || 
-                                        (bidderData?.email || "").split("@")[0] || 
-                                        "Anonymous";
+                      const bidderData = bid?.userId || bid?.bidderId || bid?.user || bid?.bidder || null;
+                      let bidderName;
+                      if (!bidderData) {
+                        bidderName = "Anonymous";
+                      } else if (typeof bidderData === 'string') {
+                        bidderName = bidderData;
+                      } else {
+                        bidderName = bidderData?.username || bidderData?.name || (bidderData?.email || "").split("@")[0] || "Anonymous";
+                      }
                        const isLeading = i === 0;
                        
                       const getTimeAgo = (createdAt) => {

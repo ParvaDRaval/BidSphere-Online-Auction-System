@@ -11,7 +11,10 @@ function Navbar() {
   const location = useLocation(); 
   const [searchTerm, setSearchTerm] = useState("");
   const [showMenu, setShowMenu] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+  const mobileToggleRef = useRef(null);
 
   //Load from local storage if data is already available
   const loadAuthFromStorage = () => {
@@ -42,6 +45,15 @@ function Navbar() {
     } catch {setAdmin(null);}
   };
 
+  // derive user image and initials for avatar display
+  const userImage = user?.profilePhoto || user?.profilePhotoUrl || user?.avatar || user?.profilePicture || null;
+  const userInitials = ((user?.username || user?.email || 'U') + '')
+    .split(' ')
+    .map(s => s[0])
+    .slice(0,2)
+    .join('')
+    .toUpperCase();
+
   useEffect(() => {
     // try to get authoritative user from backend first
     let mounted = true;
@@ -71,6 +83,17 @@ function Navbar() {
     }
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
+  }, []);
+
+  // close mobile menu when clicking outside (ignore toggle)
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!mobileMenuRef.current) return;
+      if (mobileToggleRef.current && mobileToggleRef.current.contains(e.target)) return;
+      if (!mobileMenuRef.current.contains(e.target)) setMobileOpen(false);
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
   }, []);
 
   // listen to storage events so navbar updates when auth changes in other tabs
@@ -107,14 +130,15 @@ function Navbar() {
   };
 
   return (
-    <nav className="flex items-center justify-between bg-yellow-500 px-6 py-3">
-      <div className="flex items-center">
+    <nav className="relative flex items-center justify-between bg-yellow-500 px-4 md:px-6 py-2 md:py-3">
+      <div className="flex items-center gap-3">
         <Link to="/" className="inline-block">
-          <img src={logo} alt="BidSphere" className="h-8" />
+          <img src={logo} alt="BidSphere" className="h-7 md:h-8" />
         </Link>
       </div>
 
-      <div className="flex items-center bg-white rounded-md mr-6">
+      {/* Desktop search (hidden on small) */}
+      <div className="hidden md:flex items-center bg-white rounded-md mr-6">
         <input
           type="text"
           aria-label="Search auctions"
@@ -128,7 +152,7 @@ function Navbar() {
               else navigate('/auctions');
             }
           }}
-          className="px-3 py-2 rounded-md w-72"
+          className="px-3 py-2 rounded-md w-64"
         />
         <button
           onClick={() => {
@@ -144,7 +168,21 @@ function Navbar() {
         </button>
       </div>
 
-      <ul className="flex items-center space-x-6 font-medium">
+      {/* Mobile hamburger */}
+      <div className="flex items-center md:hidden">
+        <button
+          ref={mobileToggleRef}
+          onClick={(e) => { e.stopPropagation(); setMobileOpen((s) => !s); }}
+          className="p-2 rounded-md bg-white"
+          aria-label="Open menu"
+        >
+          <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+
+      <ul className="hidden md:flex items-center space-x-6 font-medium">
         <li><Link to="/categories">Categories</Link></li>
         <li><Link to='/create-auction'>Create Auction</Link></li>
 
@@ -167,7 +205,11 @@ function Navbar() {
               aria-haspopup="true"
               aria-expanded={showMenu}
             >
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{(user.username || user.email || "U").slice(0,2).toUpperCase()}</div>
+              {userImage ? (
+                <img src={userImage} alt={user.username || 'User'} className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{userInitials}</div>
+              )}
               <span className="hidden sm:inline">{user.username || (user.email || '').split('@')[0]}</span>
             </button>
 
@@ -206,7 +248,55 @@ function Navbar() {
             </li>
           </>
         )}
-      </ul>
+        </ul>
+
+        {/* Mobile dropdown panel (simple list) */}
+        {mobileOpen && (
+          <div ref={mobileMenuRef} className="absolute left-2 right-2 top-full mt-2 z-40 bg-white shadow-md border rounded md:hidden">
+            <div className="flex flex-col p-3">
+              <input
+                type="text"
+                aria-label="Search auctions"
+                placeholder="Search auctions..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const q = searchTerm.trim();
+                    setMobileOpen(false);
+                    if (q) navigate(`/auctions?search=${encodeURIComponent(q)}`);
+                    else navigate('/auctions');
+                  }
+                }}
+                className="mb-2 px-3 py-2 border rounded"
+              />
+
+              <Link to="/categories" onClick={() => setMobileOpen(false)} className="py-2 px-2 hover:bg-gray-50 rounded">Categories</Link>
+              <Link to="/create-auction" onClick={() => setMobileOpen(false)} className="py-2 px-2 hover:bg-gray-50 rounded">Create Auction</Link>
+              {!user && !admin && (
+                <>
+                  <Link to="/login" onClick={() => setMobileOpen(false)} className="py-2 px-2 hover:bg-gray-50 rounded">Login</Link>
+                  <Link to="/register" onClick={() => setMobileOpen(false)} className="py-2 px-2 hover:bg-gray-50 rounded">Register</Link>
+                </>
+              )}
+
+              {user && !admin && (
+                <>
+                  <Link to="/seller-dashboard" onClick={() => setMobileOpen(false)} className="py-2 px-2 hover:bg-gray-50 rounded">Seller Dashboard</Link>
+                  <Link to="/buyer-dashboard" onClick={() => setMobileOpen(false)} className="py-2 px-2 hover:bg-gray-50 rounded">Bidder Dashboard</Link>
+                  <Link to="/settings" onClick={() => setMobileOpen(false)} className="py-2 px-2 hover:bg-gray-50 rounded">Account Settings</Link>
+                  <button onClick={() => { setMobileOpen(false); handleUserLogout(); }} className="text-left py-2 px-2 hover:bg-gray-50 rounded">Log Out</button>
+                </>
+              )}
+
+              {admin && (
+                <>
+                  <button onClick={() => { setMobileOpen(false); handleAdminLogout(); }} className="py-2 px-2 hover:bg-gray-50 rounded">Admin Logout</button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
     </nav>
   );
 }
