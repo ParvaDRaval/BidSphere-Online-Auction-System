@@ -31,6 +31,17 @@ async function validateBid (req, res, next) {
         message: `amount must be at least ${auction.minIncrement} higher than the current highest bid` 
       });
     }
+
+    // Unrealistic Bids
+    // Set high limit to prevent spam while allowing realistic bidding
+    //const maxAllowedBid = auction.currentBid + Math.max(20 * auction.minIncrement, auction.currentBid * 0.5);
+    const maxAllowedBid = 10000000; // ₹1 crore maximum
+    if (amount > maxAllowedBid) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Bid amount is unrealistically high. Maximum allowed bid is ₹${maxAllowedBid.toLocaleString()}` 
+      });
+    }
     
     // seller can not bid 
     if (auction.createdBy.toString() === userId.toString()) {
@@ -77,6 +88,15 @@ async function validateAutoBid (req, res, next) {
 
     if (maxLimit < auction.startingPrice || maxLimit < auction.currentBid + auction.minIncrement) {
       return res.status(400).json({ success: false, message: "Your maxLimit is too low" }); 
+    }
+
+    // Unrealistic Bids
+    const maxAllowedLimit = 10000000; 
+    if (maxLimit > maxAllowedLimit) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Auto-bid limit is unrealistically high. Maximum allowed limit is ₹${maxAllowedLimit.toLocaleString()}` 
+      });
     }
     
     next();

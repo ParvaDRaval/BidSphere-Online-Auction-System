@@ -123,7 +123,7 @@ export default function RegistrationFee() {
 
             <div>
               <div className="text-sm text-gray-600">Amount</div>
-              <div className="font-medium">{formatINR(registrationFee)}</div>
+              <div className="font-medium">{formatINR(Math.max(1, registrationFee))}</div>
             </div>
 
             <div>
@@ -144,7 +144,7 @@ export default function RegistrationFee() {
             <div className="mt-6 bg-white p-4 rounded shadow">
               <h3 className="font-semibold">Payment</h3>
               <div className="mt-2">ID: <span className="font-mono">{payment._id || payment.paymentId}</span></div>
-              <div className="mt-1">Amount: {formatINR(payment.amount ?? registrationFee)}</div>
+              <div className="mt-1">Amount: {formatINR(Math.max(1, payment.amount ?? registrationFee))}</div>
               <div className="mt-1">Status: {payment.status || 'PENDING'}</div>
 
               {payment.upiLink && (
