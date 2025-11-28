@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import logo from "../assets/bidsphere.svg";
 export default function Footer() {
   return (
-    <footer className="bg-white border-t mt-8">
+    <footer className="bg-white border-t">
       <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 md:grid-cols-4 gap-6">
         <div>
           <img src={logo} alt="BidSphere" className="h-8" />          <p className="text-sm text-gray-600 mt-2">The trusted marketplace for rare finds and everyday deals. Buy, sell, and bid with confidence — all in one place.</p>
