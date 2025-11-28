@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listAuctions, getCurrentUser } from "../api";
+import { listAuctions } from "../api";
+import { useUser } from "../contexts/UserContext";
 import homeImg from "../assets/home.png";
 import ExploreCategories from "./ExploreCategories";
 /* eslint-disable react/prop-types */
@@ -60,6 +61,7 @@ function Home() {
   const [featured, setFeatured] = useState([]);
   const [featuredLoading, setFeaturedLoading] = useState(false);
   const [showRegisterCTA, setShowRegisterCTA] = useState(true);
+  const { user: ctxUser, loading: userLoading } = useUser() || {};
   // touch featuredLoading so coverage instruments the initial hook line
   void featuredLoading;
   // also touch the setter to ensure coverage marks its declaration executed
@@ -78,33 +80,18 @@ function Home() {
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      if (typeof getCurrentUser !== "function") {
-        if (mounted) applyStoredAuthState();
-        return;
-      }
-      try {
-        const res = await getCurrentUser();
-        if (!mounted) return;
-        if (res?.user) {
-          setShowRegisterCTA(false);
-          try {
-            localStorage.setItem("bidsphere_user", JSON.stringify(res.user));
-          } catch (storageErr) {
-            // ignore storage issues
-          }
-          return;
-        }
-      } catch (err) {
-        // ignore network error, fallback to storage copy
-      }
-      if (mounted) applyStoredAuthState();
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [applyStoredAuthState]);
+    // Prefer the centralized user from context; fall back to localStorage when unavailable.
+    if (ctxUser) {
+      setShowRegisterCTA(false);
+      try { localStorage.setItem("bidsphere_user", JSON.stringify(ctxUser)); } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (userLoading) return; // wait for context to resolve
+
+    // context empty -> check localStorage
+    applyStoredAuthState();
+  }, [ctxUser, userLoading, applyStoredAuthState]);
 
   useEffect(() => {
     const handleStorage = (event) => {

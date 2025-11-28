@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { createDelivery, getCurrentUser, getAuction } from '../api';
+import { createDelivery, getAuction } from '../api';
+import { useUser } from '../contexts/UserContext';
 
 export default function DeliveryCreate() {
   const { auctionId } = useParams();
@@ -9,7 +10,6 @@ export default function DeliveryCreate() {
   const paymentId = searchParams.get('paymentId') || null;
   const navigate = useNavigate();
 
-  const [user, setUser] = useState(null);
   const [auction, setAuction] = useState(null);
 
   const [name, setName] = useState('');
@@ -21,23 +21,24 @@ export default function DeliveryCreate() {
   const [country, setCountry] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const { user: ctxUser, loading: userLoading } = useUser() || {};
 
   useEffect(() => {
     let mounted = true;
     async function init() {
       try {
-        const me = await getCurrentUser().catch(() => null);
-        if (!mounted) return;
-        const u = me?.user || me || null;
-        setUser(u);
-        if (u?.address) {
-          setStreet(u.address.street || '');
-          setCity(u.address.city || '');
-          setStateVal(u.address.state || '');
-          setPostalCode(u.address.postalCode || '');
-          setCountry(u.address.country || '');
+        const u = ctxUser || null;
+        if (u && mounted) {
+          if (u.address) {
+            setStreet(u.address.street || '');
+            setCity(u.address.city || '');
+            setStateVal(u.address.state || '');
+            setPostalCode(u.address.postalCode || '');
+            setCountry(u.address.country || '');
+          }
           setName(u.fullname || u.username || '');
         }
+
         if (auctionId) {
           const a = await getAuction(auctionId).catch(() => null);
           if (!mounted) return;
@@ -47,9 +48,22 @@ export default function DeliveryCreate() {
         console.error(err);
       }
     }
+
+    // Delay running until user context has resolved to avoid overwriting user fields
+    if (userLoading) {
+      // run once userLoading flips to false
+      const id = setInterval(() => {
+        if (!userLoading) {
+          clearInterval(id);
+          init();
+        }
+      }, 50);
+      return () => { mounted = false; clearInterval(id); };
+    }
+
     init();
     return () => (mounted = false);
-  }, [auctionId]);
+  }, [auctionId, ctxUser, userLoading]);
 
   async function onSubmit(e) {
     e && e.preventDefault();

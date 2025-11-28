@@ -83,8 +83,13 @@ export default function Auctions() {
         params.limit = 50;
         const res = await listAuctions(params);
         if (!mounted) return;
-        // use API-provided auctions directly; expect `auction.item.condition` to be present
-        setAuctions(res?.auctions || []);
+        // show only LIVE and UPCOMING auctions (backend returns status in uppercase)
+        const all = res?.auctions || [];
+        const visible = all.filter((a) => {
+          const s = (a?.status || "").toString().toUpperCase();
+          return s === "LIVE" || s === "UPCOMING";
+        });
+        setAuctions(visible);
       } catch (err) {
         console.error("listAuctions error:", err);
         if (mounted) setError(err.message || "Failed to load auctions");
