@@ -31,7 +31,10 @@ async function checkAuth (req, res, next){
 
     const user = await getUser(userToken);
     
-    req.user = user;
+    // Only set req.user if we have a valid user
+    if (user) {
+      req.user = user;
+    }
     next();
   }
   catch (err) {

@@ -19,6 +19,10 @@ export function UserProvider({ children }) {
         const res = await getCurrentUser().catch(() => null);
         if (!mounted) return;
         setUser(res?.user || res || null);
+        // Clear localStorage if backend confirms no user
+        if (!res?.user) {
+          try { localStorage.removeItem("bidsphere_user"); } catch {}
+        }
       } catch (err) {
         console.error('UserProvider getCurrentUser error:', err);
       } finally {
