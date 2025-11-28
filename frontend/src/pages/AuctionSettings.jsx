@@ -1,10 +1,12 @@
 // frontend/src/pages/Settings.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { getCurrentUser, updateUserProfile, uploadImagesFormData } from "../api";
+import { updateUserProfile, uploadImagesFormData } from "../api";
+import { useUser } from "../contexts/UserContext";
 import { toast } from "react-toastify";
 
 export default function Settings() {
-  const [loading, setLoading] = useState(true);
+  const { user: ctxUser, loading: userLoading } = useUser() || {};
+  const [loading, setLoading] = useState(userLoading ?? true);
   const [saving, setSaving] = useState(false);
   const [userData, setUserData] = useState({
     fullname: '',
@@ -23,29 +25,32 @@ export default function Settings() {
   const [preview, setPreview] = useState('');
   const fileInputRef = useRef(null);
 
-  // Load user data
+  // Load user data from centralized UserContext
   useEffect(() => {
-    async function loadUserData() {
+    let mounted = true;
+    async function init() {
       try {
-        const data = await getCurrentUser();
-        if (data?.user) {
+        if (ctxUser) {
           setUserData((prev) => ({
             ...prev,
-            ...data.user,
-            address: data.user.address || prev.address,
+            ...ctxUser,
+            address: ctxUser.address || prev.address,
           }));
-          if (data.user.profilePhoto) setPreview(data.user.profilePhoto);
+          if (ctxUser.profilePhoto) setPreview(ctxUser.profilePhoto);
         }
       } catch (error) {
-        console.error("Failed to load user data:", error);
+        console.error("Failed to load user data from context:", error);
         toast.error("Failed to load user data");
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
-    loadUserData();
-  }, []);
+    setLoading(Boolean(userLoading));
+    if (!userLoading) init();
+
+    return () => (mounted = false);
+  }, [ctxUser, userLoading]);
 
   const handleFileChange = (e) => {
     const file = e?.target?.files?.[0];

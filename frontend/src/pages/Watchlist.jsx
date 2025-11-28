@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { Link, useNavigate } from "react-router-dom";
-import { getWatchlist, removeFromWatchlist, getCurrentUser } from "../api";
+import { getWatchlist, removeFromWatchlist } from "../api";
+import DashboardSidebar from "../components/DashboardSidebar";
 
 function WatchRow({ w, onRemove }) {
   // Debug: Log the raw data
@@ -95,7 +96,6 @@ function WatchRow({ w, onRemove }) {
 
 export default function Watchlist() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [watchlist, setWatchlist] = useState([]);
   const [q, setQ] = useState("");
@@ -105,10 +105,6 @@ export default function Watchlist() {
     async function load() {
       setLoading(true);
       try {
-        const me = await getCurrentUser().catch(() => null);
-        if (!mounted) return;
-        setUser(me?.user || me || null);
-
         const res = await getWatchlist();
         if (!mounted) return;
 
@@ -182,45 +178,19 @@ export default function Watchlist() {
   });
 
   return (
-    <div className="min-h-screen bg-[#fdfbf6] p-6">
-      <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Sidebar: match buyer dashboard */}
-        <aside className="lg:col-span-3 bg-white border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-green-600 text-white flex items-center justify-center font-semibold">
-              {(() => {
-                const displayName = (user && (user.username || user.name || user.email)) || "U";
-                return String(displayName).split(" ").map(s=>s[0]||"").slice(0,2).join("").toUpperCase();
-              })()}
-            </div>
-            <div>
-              <div className="font-semibold">{(user && (user.username || user.name)) || (loading ? 'Loading...' : 'First Last')}</div>
-              <div className="text-xs text-gray-500">Active bidder</div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar - match seller dashboard style */}
+      <DashboardSidebar role="buyer" active="watchlist" />
 
-          <nav className="mt-6">
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link to="/buyer-dashboard" className="block py-2 px-3 rounded hover:bg-gray-50">Dashboard</Link>
-              </li>
-              <li>
-                <Link to="/my-bids" className="block py-2 px-3 rounded hover:bg-gray-50">My Bids</Link>
-              </li>
-              <li>
-                <Link to="/watchlist" className="block py-2 px-3 rounded bg-green-50 font-medium">Watchlist</Link>
-              </li>
-            </ul>
-          </nav>
-        </aside>
-
-        <main className="lg:col-span-9">
-          <div className="flex items-center justify-between mb-6">
+      {/* Main content */}
+      <main className="flex-1 p-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold">Watchlist</h1>
             <div className="text-sm text-gray-600">Showing {watchlist.length} items</div>
           </div>
 
-          <div className="bg-white border rounded-lg p-4">
+          <div className="bg-white border rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-gray-600">All the auctions you've added to your watchlist.</div>
               <input
@@ -243,8 +213,8 @@ export default function Watchlist() {
               </div>
             )}
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

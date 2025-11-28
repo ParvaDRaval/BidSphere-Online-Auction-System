@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   getAuction,
   placeBid,
-  getCurrentUser,
   listPayments,
   setAutoBid,
   editAutoBid,
@@ -14,6 +13,7 @@ import {
   removeFromWatchlist,
   getWatchlist,
 } from "../api";
+import { useUser } from "../contexts/UserContext";
 import { toast } from "react-toastify";
 import SellerRating from "./SellerRating";
 import SellerRatingSummary from "../components/SellerRatingSummary";
@@ -53,6 +53,8 @@ function AuctionDetails() {
   const [paymentCheckLoading, setPaymentCheckLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
 
+  const { user: ctxUser, loading: userLoading } = useUser() || {};
+
   // Fetch auction
   useEffect(() => {
     let mounted = true;
@@ -80,27 +82,17 @@ function AuctionDetails() {
     return () => (mounted = false);
   }, [id]);
 
-  // Fetch current user early to avoid UI flash for sellers
+  // Sync currentUser from centralized UserContext to avoid duplicate fetches
   useEffect(() => {
-    let mounted = true;
-    (async function fetchMe() {
-      try {
-        const me = await getCurrentUser().catch(() => null);
-        if (!mounted) return;
-        const user = me?.user || null;
-        setCurrentUser(user);
-      } catch (err) {
-        // ignore
-      }
-    })();
-    return () => (mounted = false);
-  }, []);
+    setCurrentUser(ctxUser || null);
+  }, [ctxUser]);
 
   // Check if auction is in user's watchlist
   useEffect(() => {
     let mounted = true;
     async function checkWatchlist() {
-      if (!id || !currentUser?._id) return;
+      const uid = ctxUser?._id || currentUser?._id;
+      if (!id || !uid) return;
       try {
         const res = await getWatchlist();
         if (!mounted) return;
@@ -115,7 +107,7 @@ function AuctionDetails() {
     }
     checkWatchlist();
     return () => (mounted = false);
-  }, [id, currentUser?._id]);
+  }, [id, ctxUser?._id, currentUser?._id]);
 
   // fetch current user and check payment status for this auction
   useEffect(() => {
@@ -124,9 +116,8 @@ function AuctionDetails() {
       if (!auction?._id) return;
       setPaymentCheckLoading(true);
       try {
-        const me = await getCurrentUser().catch(() => null);
+        const user = ctxUser || currentUser || null;
         if (!mounted) return;
-        const user = me?.user || null;
         setCurrentUser(user);
 
         if (!user) {
@@ -148,7 +139,7 @@ function AuctionDetails() {
           // ignore and continue to payment lookup
         }
 
-         // call admin payments list (backend supports filtering)
+        // call admin payments list (backend supports filtering)
         const res = await listPayments({ auctionId: auction._id, bidderId: user._id });
         // res.data is array
         const payments = res?.data || [];
@@ -173,13 +164,14 @@ function AuctionDetails() {
     }
     checkUserAndPayment();
     return () => (mounted = false);
-  }, [auction?._id]);
+  }, [auction?._id, ctxUser?._id, currentUser?._id]);
 
   // Fetch auto-bid status
   useEffect(() => {
     let mounted = true;
     async function fetchAutoBid() {
-      if (!auction?._id || !currentUser?._id) return;
+      const uid = ctxUser?._id || currentUser?._id;
+      if (!auction?._id || !uid) return;
       try {
         const data = await getUserAutoBid(auction._id);
         if (!mounted) return;
@@ -194,7 +186,7 @@ function AuctionDetails() {
     }
     fetchAutoBid();
     return () => (mounted = false);
-  }, [auction?._id, currentUser?._id]);
+  }, [auction?._id, ctxUser?._id, currentUser?._id]);
 
   // Countdown timer
   useEffect(() => {

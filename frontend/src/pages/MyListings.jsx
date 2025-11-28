@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMyAuctions, deleteAuction, getCurrentUser } from "../api";
+import { getMyAuctions, deleteAuction } from "../api";
+import DashboardSidebar from "../components/DashboardSidebar";
 import { toast } from "react-toastify";
 
 function ListingRow({ a, onDelete, deleting }) {
@@ -40,21 +41,12 @@ export default function MyListings() {
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
-  const [user, setUser] = useState(null);
 
   useEffect(() => {
     let mounted = true;
     async function fetch() {
       setLoading(true);
       try {
-        // fetch current user for sidebar display
-        try {
-          const me = await getCurrentUser().catch(() => null);
-          if (mounted) setUser(me?.user || me || null);
-        } catch (e) {
-          // ignore
-        }
-
         const res = await getMyAuctions({ limit: 100 });
         if (!mounted) return;
         setAuctions(res?.auctions || []);
@@ -83,44 +75,18 @@ export default function MyListings() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f3f3] p-6">
-      <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <aside className="lg:col-span-3 bg-white border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
-              {(() => {
-                const displayName = (user && (user.username || user.name || user.email)) || "U";
-                return String(displayName).split(" ").map(s=>s[0]||"").slice(0,2).join("").toUpperCase();
-              })()}
-            </div>
-            <div>
-              <div className="font-semibold">{(user && (user.username || user.name)) || (loading ? 'Loading...' : 'First Last')}</div>
-              <div className="text-xs text-gray-500">Active seller</div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      <DashboardSidebar role="seller" active="my-listings" />
 
-          <nav className="mt-6">
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link to="/seller-dashboard" className="block py-2 px-3 rounded bg-blue-50 font-medium">Dashboard</Link>
-              </li>
-              <li>
-                <Link to="/my-listings" className="block py-2 px-3 rounded hover:bg-gray-50">My Listings</Link>
-              </li>
-              <li>
-                <Link to="" className="block py-2 px-3 rounded hover:bg-gray-50">Earnings</Link>
-              </li>
-            </ul>
-          </nav>
-        </aside>
-
-        <main className="lg:col-span-9">
-          <div className="flex items-center justify-between mb-6">
+      {/* Main Content */}
+      <div className="flex-1 p-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold">My Listings</h1>
             <Link to="/create-auction" className="bg-yellow-400 px-4 py-2 rounded font-medium">Create Auction</Link>
           </div>
 
-          <div className="bg-white border rounded-lg p-4">
+          <div className="bg-white border rounded-lg p-6">
             {loading ? (
               <div>Loading your listings...</div>
             ) : auctions.length === 0 ? (
@@ -133,7 +99,7 @@ export default function MyListings() {
               </div>
             )}
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );

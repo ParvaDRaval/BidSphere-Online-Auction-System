@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import { UserProvider } from "./contexts/UserContext";
 import Home from "./pages/Home";
 import Categories from "./pages/Categories";
 import Login from "./pages/Login";
@@ -44,10 +45,11 @@ function App() {
     return null;
   }
   return (
-    <div className="bg-[#fdfbf6] min-h-screen">
-      <Navbar />
-      <ScrollToTop />
-      <Routes>
+    <UserProvider>
+      <div className="bg-[#fdfbf6] min-h-screen">
+        <Navbar />
+        <ScrollToTop />
+        <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/categories/:name" element={<Home />} />
@@ -88,9 +90,10 @@ function App() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/cookies" element={<CookiePolicy />} />
-      </Routes>
-      <Footer />
-    </div>
+        </Routes>
+        <Footer />
+      </div>
+    </UserProvider>
   );
 }
 

@@ -3,10 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import {
   getAuction,
-  getCurrentUser,
   createRegistrationPayment,
   verifyAuctionPayment,
 } from '../api';
+import { useUser } from '../contexts/UserContext';
 import { toast } from 'react-toastify';
 
 function formatINR(v) {
@@ -31,36 +31,35 @@ export default function RegistrationFee() {
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState(null);
 
+  const { user: ctxUser, loading: userLoading } = useUser() || {};
+
   useEffect(() => {
     let mounted = true;
     async function init() {
       setLoading(true);
       try {
-        const [meRes, aucRes] = await Promise.allSettled([
-          getCurrentUser(),
-          routeId ? getAuction(routeId) : Promise.resolve(null),
-        ]);
-
-        if (!mounted) return;
-        if (meRes.status === 'fulfilled') {
-          const u = meRes.value?.user || null;
-          setUser(u);
-          if (u?.upi || u?.vpa || u?.payeeVpa) setPayerVpa(u?.upi || u?.vpa || u?.payeeVpa);
+        if (ctxUser) {
+          setUser(ctxUser);
+          if (ctxUser?.upi || ctxUser?.vpa || ctxUser?.payeeVpa) setPayerVpa(ctxUser?.upi || ctxUser?.vpa || ctxUser?.payeeVpa);
         }
-
-        if (aucRes.status === 'fulfilled' && aucRes.value) {
-          setAuction(aucRes.value?.auction || aucRes.value || null);
+        if (routeId) {
+          const aucRes = await getAuction(routeId).catch(() => null);
+          if (!mounted) return;
+          setAuction(aucRes?.auction || aucRes || null);
         }
       } catch (err) {
         console.error(err);
         setError(err?.message || String(err));
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
+
+    // wait for context to resolve
+    if (userLoading) return;
     init();
     return () => (mounted = false);
-  }, [routeId]);
+  }, [routeId, ctxUser, userLoading]);
 
   const registrationFee = (() => {
     if (!auction) return 0;

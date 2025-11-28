@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getBiddingHistory, getCurrentUser } from "../api";
+import { getBiddingHistory } from "../api";
+import DashboardSidebar from "../components/DashboardSidebar";
 
 function StatCard({ title, value, small }) {
   return (
@@ -35,7 +36,6 @@ export default function MyBids() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState([]);
-  const [user, setUser] = useState(null);
 
   // server-side paging
   const [page, setPage] = useState(1);
@@ -51,10 +51,7 @@ export default function MyBids() {
     async function load() {
       setLoading(true);
       try {
-        const me = await getCurrentUser().catch(() => null);
-        if (!mounted) return;
-        setUser(me?.user || me || null);
-
+        // Sidebar handles fetching current user; only load bidding history here
         const res = await getBiddingHistory({ page, limit });
         if (!mounted) return;
         const data = res?.history || res?.bids || [];
@@ -130,60 +127,11 @@ export default function MyBids() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fdfbf6]">
-      <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Sidebar */}
-        <aside className="lg:col-span-3 bg-white border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-green-600 text-white flex items-center justify-center font-semibold">
-              {(user?.username || user?.name || "U")
-                .split(" ")
-                .map((s) => s[0])
-                .slice(0, 2)
-                .join("")}
-            </div>
-            <div>
-              <div className="font-semibold">
-                {user?.username ||
-                  user?.name ||
-                  (loading ? "Loading..." : "First Last")}
-              </div>
-              <div className="text-xs text-gray-500">Active bidder</div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      <DashboardSidebar role="buyer" active="my-bids" />
 
-          <nav className="mt-6">
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  to="/buyer-dashboard"
-                  className="block py-2 px-3 rounded hover:bg-gray-50"
-                >
-                  Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/my-bids"
-                  className="block py-2 px-3 rounded bg-yellow-50 font-medium"
-                >
-                  My Bids
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/watchlist"
-                  className="block py-2 px-3 rounded hover:bg-gray-50"
-                >
-                  Watchlist
-                </Link>
-              </li>
-            </ul>
-          </nav>
-        </aside>
-
-        {/* Main */}
-        <main className="lg:col-span-9 space-y-6">
+      {/* Main */}
+      <main className="flex-1 p-8 space-y-6">
           {/* Top stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
@@ -450,7 +398,6 @@ export default function MyBids() {
             )}
           </div>
         </main>
-      </div>
     </div>
   );
 }
