@@ -45,6 +45,15 @@ function Navbar() {
     } catch {setAdmin(null);}
   };
 
+  // derive user image and initials for avatar display
+  const userImage = user?.profilePhoto || user?.profilePhotoUrl || user?.avatar || user?.profilePicture || null;
+  const userInitials = ((user?.username || user?.email || 'U') + '')
+    .split(' ')
+    .map(s => s[0])
+    .slice(0,2)
+    .join('')
+    .toUpperCase();
+
   useEffect(() => {
     // try to get authoritative user from backend first
     let mounted = true;
@@ -196,7 +205,11 @@ function Navbar() {
               aria-haspopup="true"
               aria-expanded={showMenu}
             >
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{(user.username || user.email || "U").slice(0,2).toUpperCase()}</div>
+              {userImage ? (
+                <img src={userImage} alt={user.username || 'User'} className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{userInitials}</div>
+              )}
               <span className="hidden sm:inline">{user.username || (user.email || '').split('@')[0]}</span>
             </button>
 

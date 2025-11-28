@@ -12,7 +12,7 @@ import {
   addToWatchlist,
   removeFromWatchlist,
   getWatchlist,
-  
+  getUserById,
 } from "../api";
 import { useUser } from "../contexts/UserContext";
 import { toast } from "react-toastify";
@@ -65,6 +65,9 @@ function AuctionDetails() {
   const [paymentCheckLoading, setPaymentCheckLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
 
+  // Seller info (normalized) - declared with other hooks to keep Hooks order stable
+  const [sellerInfo, setSellerInfo] = useState(null);
+
   
 
   const { user: ctxUser, loading: userLoading } = useUser() || {};
@@ -100,6 +103,35 @@ function AuctionDetails() {
   useEffect(() => {
     setCurrentUser(ctxUser || null);
   }, [ctxUser]);
+
+  // Load seller info (if auction.createdBy is an id) — unconditional hook to keep order stable
+  useEffect(() => {
+    let mounted = true;
+    async function fetchSeller() {
+      const s = auction?.createdBy;
+      const sellerIdLocal = typeof s === 'string' ? s : (s?._id || s?.id || null);
+      // if auction includes full seller object, use it
+      if (s && typeof s === 'object' && (s.username || s.name || s.email)) {
+        setSellerInfo(s);
+        return;
+      }
+      if (!sellerIdLocal) {
+        setSellerInfo(null);
+        return;
+      }
+      try {
+        const res = await getUserById(sellerIdLocal).catch(() => null);
+        if (!mounted) return;
+        const user = res?.user || res || null;
+        setSellerInfo(user);
+      } catch (e) {
+        if (!mounted) return;
+        setSellerInfo(null);
+      }
+    }
+    fetchSeller();
+    return () => (mounted = false);
+  }, [auction?.createdBy]);
 
   // Check if auction is in user's watchlist
   useEffect(() => {
@@ -467,12 +499,15 @@ function AuctionDetails() {
   const images = auction?.item?.images || [];
   const seller = auction?.createdBy;
   const sellerId = typeof seller === 'string' ? seller : (seller?._id || seller?.id || null);
+  // Prefer fetched `sellerInfo` when available, else fall back to auction.createdBy
+  const effectiveSeller = sellerInfo || (seller && typeof seller === 'object' ? seller : null);
   let displaySellerName = 'Unknown';
-  if (!seller) displaySellerName = 'Unknown';
-  else if (typeof seller === 'string') displaySellerName = seller;
-  else {
-    displaySellerName = seller?.username || seller?.name || seller?.displayName || seller?.fullName || (seller?.email ? seller.email.split("@")[0] : null) || `Seller${String(sellerId || '').slice(0,6)}`;
+  if (!effectiveSeller && typeof seller === 'string') displaySellerName = seller;
+  else if (effectiveSeller) {
+    displaySellerName = effectiveSeller?.username || effectiveSeller?.name || effectiveSeller?.displayName || effectiveSeller?.fullName || (effectiveSeller?.email ? effectiveSeller.email.split("@")[0] : null) || `Seller${String(sellerId || '').slice(0,6)}`;
   }
+  // Prefer common profile photo field names if available
+  const sellerImage = effectiveSeller?.profilePhoto || effectiveSeller?.profilePhotoUrl || effectiveSeller?.avatar || effectiveSeller?.profilePicture || null;
   // Prefer topBids[0] amount when available (reflects highest bid), otherwise fall back to auction.currentBid or startingPrice
   const currentPrice = (topBids && topBids[0] && (topBids[0].amount || topBids[0].price))
     || (auction?.currentBid && auction.currentBid > 0 ? auction.currentBid : auction?.startingPrice);
@@ -522,10 +557,30 @@ function AuctionDetails() {
 
               <div className="w-full h-96 bg-gray-100 rounded overflow-hidden mb-4">
                 {images.length > 0 ? (
-                  <img src={images[selectedImageIndex]} alt={auction?.item?.name || "Auction"} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">No image available</div>
-                )}
+                    <div className="w-full h-full relative flex items-center justify-center bg-white">
+                      <img src={images[selectedImageIndex]} alt={auction?.item?.name || "Auction"} className="max-w-full max-h-full object-contain" />
+                      {images.length > 1 && (
+                        <>
+                          <button
+                            aria-label="Previous image"
+                            onClick={() => setSelectedImageIndex((i) => (i - 1 + images.length) % images.length)}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white px-2 py-2 rounded-full shadow"
+                          >
+                            ‹
+                          </button>
+                          <button
+                            aria-label="Next image"
+                            onClick={() => setSelectedImageIndex((i) => (i + 1) % images.length)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white px-2 py-2 rounded-full shadow"
+                          >
+                            ›
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">No image available</div>
+                  )}
               </div>
 
               {images.length > 1 && (
@@ -546,33 +601,59 @@ function AuctionDetails() {
 
           <aside className="lg:col-span-4">
             <div className="sticky top-6 space-y-4">
-              <div className="bg-yellow-100 p-4 rounded-lg shadow">
-                <div className="text-sm text-gray-700 font-semibold">{countdownTitle}</div>
-                <div className="mt-3 grid grid-cols-4 gap-2">
-                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{timeLeft.days}</div>
-                    <div className="text-xs">DAYS</div>
-                  </div>
-                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{timeLeft.hours}</div>
-                    <div className="text-xs">HOURS</div>
-                  </div>
-                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{timeLeft.mins}</div>
-                    <div className="text-xs">MINS</div>
-                  </div>
-                  <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{timeLeft.secs}</div>
-                    <div className="text-xs">SECS</div>
+                {/* Seller Info Card (visible even when user hasn't paid) - moved above countdown */}
+                <div className="mt-0">
+                  <div className="bg-white p-4 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      {sellerImage ? (
+                        <img src={sellerImage} alt={displaySellerName} className="w-10 h-10 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{String(displaySellerName).slice(0,2).toUpperCase()}</div>
+                      )}
+                      <div>
+                        <button 
+                          onClick={() => {
+                            if (sellerId && /^[0-9a-fA-F]{24}$/.test(String(sellerId))) {
+                              navigate(`/seller/${sellerId}`);
+                            } else {
+                              toast.error("Invalid seller information");
+                            }
+                          }}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          {displaySellerName}
+                        </button>
+                        <div className="text-xs text-gray-500">Verified Seller</div>
+                      </div>
+                    </div>
+                    {isAuctionLive && sellerId && (
+                       <SellerRatingSummary sellerId={sellerId} />
+                    )}
                   </div>
                 </div>
-                <div className="text-xs text-gray-600 mt-2">Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}</div>
-              </div>
 
-              {/* Show seller rating before payment so users can evaluate seller */}
-              {sellerId && (
-                <SellerRatingSummary sellerId={sellerId} />
-              )}
+                <div className="bg-yellow-100 p-4 rounded-lg shadow">
+                  <div className="text-sm text-gray-700 font-semibold">{countdownTitle}</div>
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold">{timeLeft.days}</div>
+                      <div className="text-xs">DAYS</div>
+                    </div>
+                    <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold">{timeLeft.hours}</div>
+                      <div className="text-xs">HOURS</div>
+                    </div>
+                    <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold">{timeLeft.mins}</div>
+                      <div className="text-xs">MINS</div>
+                    </div>
+                    <div className="bg-yellow-400 text-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold">{timeLeft.secs}</div>
+                      <div className="text-xs">SECS</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-600 mt-2">Ends: {auction?.endTime ? new Date(auction.endTime).toLocaleString() : "–"}</div>
+                </div>
 
               <div className="bg-white p-4 rounded-lg border">
                 <div className="grid grid-cols-2 gap-3 mb-3">
@@ -704,11 +785,31 @@ function AuctionDetails() {
             {/* Main Image */}
             <div className="w-full h-96 bg-gray-100 rounded overflow-hidden mb-4">
               {images.length > 0 ? (
-                <img 
-                  src={images[selectedImageIndex]} 
-                  alt={auction?.item?.name || "Auction"} 
-                  className="w-full h-full object-cover" 
-                />
+                <div className="w-full h-full relative flex items-center justify-center bg-white">
+                  <img
+                    src={images[selectedImageIndex]}
+                    alt={auction?.item?.name || "Auction"}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        aria-label="Previous image"
+                        onClick={() => setSelectedImageIndex((i) => (i - 1 + images.length) % images.length)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white px-3 py-2 rounded-full shadow"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        aria-label="Next image"
+                        onClick={() => setSelectedImageIndex((i) => (i + 1) % images.length)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white px-3 py-2 rounded-full shadow"
+                      >
+                        ›
+                      </button>
+                    </>
+                  )}
+                </div>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">
                   No image available
@@ -771,8 +872,12 @@ function AuctionDetails() {
           <div className="sticky top-6 space-y-4">
               {/* Seller Info */}
             <div className="bg-white p-4 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{String(displaySellerName).slice(0,2).toUpperCase()}</div>
+                <div className="flex items-center gap-3">
+                {sellerImage ? (
+                  <img src={sellerImage} alt={displaySellerName} className="w-10 h-10 rounded-full object-cover" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">{String(displaySellerName).slice(0,2).toUpperCase()}</div>
+                )}
                 <div>
                   <button 
                     onClick={() => {
@@ -792,6 +897,7 @@ function AuctionDetails() {
               {isAuctionLive && sellerId && (
                  <SellerRatingSummary sellerId={sellerId} />
               )}
+                {/* seller debug removed */}
               {/* Show rating form when auction ended and current user is winner and has paid */}
               {auction?.status === 'ENDED' && isTopBidder && hasPaid && currentUser?._id && sellerId && (
                 <RatingForm
