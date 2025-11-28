@@ -103,6 +103,8 @@ app.use("/bidsphere/delivery", deliveryRoutes);
 
 // Rating Routes
 import ratingRoutes from './routes/ratingRoutes.js';
-app.use('/bidsphere/ratings', restrictToLoggedinUserOnly, ratingRoutes);
+// Make GET /bidsphere/ratings/seller/:sellerId public (no auth required)
+// Protect only write operations (POST/PUT/DELETE) inside the route file.
+app.use('/bidsphere/ratings', ratingRoutes);
 
 export default app;
