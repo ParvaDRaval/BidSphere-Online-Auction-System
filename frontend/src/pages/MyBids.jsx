@@ -345,19 +345,34 @@ export default function MyBids() {
                               </div>
                             </div>
                             <div className="flex items-center justify-end">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(
-                                    `/auction/${
-                                      auction._id || auction.id || b.auctionId
-                                    }`
-                                  );
-                                }}
-                                className="px-3 py-2 bg-yellow-400 text-sm rounded font-medium hover:bg-yellow-500"
-                              >
-                                Place Bid
-                              </button>
+                              {(
+                                x.raw.youWon || (x.isEnded && x.isLeading)
+                              ) ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const auctionId = auction._id || auction.id || b.auctionId;
+                                    if (auctionId) navigate(`/invoice/${auctionId}`);
+                                  }}
+                                  className="px-3 py-2 bg-blue-600 text-sm rounded font-medium hover:bg-blue-700 text-white"
+                                >
+                                  Invoice
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(
+                                      `/auction/${
+                                        auction._id || auction.id || b.auctionId
+                                      }`
+                                    );
+                                  }}
+                                  className="px-3 py-2 bg-yellow-400 text-sm rounded font-medium hover:bg-yellow-500"
+                                >
+                                  Place Bid
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
