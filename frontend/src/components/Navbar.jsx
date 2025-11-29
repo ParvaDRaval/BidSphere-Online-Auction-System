@@ -22,10 +22,20 @@ function Navbar() {
       const storedUser = localStorage.getItem("bidsphere_user");
       if (storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+          // Handle both cases: {user: null} and direct null/undefined
+          if (parsedUser && parsedUser.user === null) {
+            setUser(null);
+          } else if (parsedUser && parsedUser.user) {
+            setUser(parsedUser.user);
+          } else if (parsedUser) {
+            setUser(parsedUser);
+          } else {
+            setUser(null);
+          }
         } catch (e) {
-          // if parsing fails, store raw string
-          setUser(storedUser);
+          // if parsing fails, don't set a raw string as user (will show as anonymous)
+          setUser(null);
         }
       } else {
         setUser(null);
@@ -41,13 +51,16 @@ function Navbar() {
     }
     try {
       const storedAdmin = localStorage.getItem("bidsphere_admin");
-      setAdmin(storedAdmin ? JSON.parse(storedAdmin) : null);
+      const adm = storedAdmin ? JSON.parse(storedAdmin) : null;
+      setAdmin(adm && typeof adm === 'object' ? adm : null);
     } catch {setAdmin(null);}
   };
 
-  // derive user image and initials for avatar display
-  const userImage = user?.profilePhoto || user?.profilePhotoUrl || user?.avatar || user?.profilePicture || null;
-  const userInitials = ((user?.username || user?.email || 'U') + '')
+  // derive user image and initials for avatar display (defensive: only treat `user` as object)
+  const userObj = (user && typeof user === 'object') ? user : null;
+  const userImage = userObj?.profilePhoto || userObj?.profilePhotoUrl || userObj?.avatar || userObj?.profilePicture || null;
+  const userHandle = (userObj?.username || userObj?.email || '').toString().trim();
+  const userInitials = (userHandle ? userHandle : 'U')
     .split(' ')
     .map(s => s[0])
     .slice(0,2)
@@ -58,8 +71,9 @@ function Navbar() {
     // try to get authoritative user from backend first
     let mounted = true;
     (async () => {
+      let res = null;
       try {
-        const res = await getCurrentUser();
+        res = await getCurrentUser();
         if (!mounted) return;
         if (res?.user) {
           setUser(res.user);
@@ -71,6 +85,12 @@ function Navbar() {
         // ignore and fallback to storage
       }
       loadAuthFromStorage();
+      // If backend call succeeded but returned no user, clear stale localStorage data
+      if (res && !res?.user) {
+        try {
+          localStorage.removeItem("bidsphere_user");
+        } catch {}
+      }
     })();
     return () => { mounted = false; };
   }, [location]);

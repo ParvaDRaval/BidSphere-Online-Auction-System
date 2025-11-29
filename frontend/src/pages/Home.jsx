@@ -218,7 +218,7 @@ function Home() {
       </div>
 
       {/* Testimonials section */}
-      <div className="bg-gray-50 rounded-lg p-6 mb-6">
+      <div className="bg-gray-50 rounded-lg p-6">
         <div className="max-w-7xl mx-auto text-center mb-6">
           <h3 className="text-xl font-semibold">What Our Collectors Say</h3>
           <p className="text-sm text-gray-600">Join thousands of satisfied collectors worldwide</p>

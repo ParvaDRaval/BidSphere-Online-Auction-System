@@ -27,7 +27,10 @@ function WatchlistRow({
   bids = 0,
   timeLeft = "—",
   auctionId,
+  image = null,
 }) {
+  const imgSrc = image && (image.startsWith("http") || image.startsWith("/")) ? image : null;
+  
   return (
     <div className="flex items-center gap-4 bg-white border rounded p-3 hover:shadow-md transition-shadow cursor-pointer"
          onClick={() => {
@@ -35,7 +38,15 @@ function WatchlistRow({
              window.location.href = `/auction/${auctionId}`;
            }
          }}>
-      <div className="w-16 h-12 bg-gray-100 rounded" />
+      <div className="w-16 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+        {imgSrc ? (
+          <img src={imgSrc} alt={title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+            No image
+          </div>
+        )}
+      </div>
       <div className="flex-1">
         <div className="font-medium hover:text-blue-600">{title}</div>
         <div className="text-xs text-gray-500 mt-1">
@@ -234,8 +245,17 @@ export default function UserDashboardBuyer() {
                 watchlist.map((w, i) => {
                   const title = w.auctionId?.title || w.title || w.item?.name || w.name || "Untitled Auction";
                   const bid = w.auctionId?.currentBid || w.currentBid ? `₹${w.auctionId?.currentBid || w.currentBid}` : (w.auctionId?.startingPrice || w.startingPrice ? `₹${w.auctionId?.startingPrice || w.startingPrice}` : "—");
+                  const image = w.auctionId?.item?.images?.[0] || w.auctionId?.images?.[0] || w.image || w.item?.images?.[0] || null;
                   return (
-                    <WatchlistRow key={w._id || w.id || i} title={title} bid={bid} bids={w.totalBids || 0} timeLeft={w.timeLeft || "—"} auctionId={w.auctionId?._id || w._id || w.id} />
+                    <WatchlistRow 
+                      key={w._id || w.id || i} 
+                      title={title} 
+                      bid={bid} 
+                      bids={w.totalBids || 0} 
+                      timeLeft={w.timeLeft || "—"} 
+                      auctionId={w.auctionId?._id || w._id || w.id}
+                      image={image}
+                    />
                   );
                 })
               )}
@@ -250,19 +270,34 @@ export default function UserDashboardBuyer() {
               ) : !Array.isArray(biddingHistory) || biddingHistory.length === 0 ? (
                 <div className="text-sm text-gray-500">You have no bidding history yet.</div>
               ) : (
-                biddingHistory.map((b, idx) => (
-                  <div key={b._id || b.id || idx} className="bg-gray-50 p-3 rounded border flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { const auctionId = b.auctionId?._id || b.auctionId || b._id; if (auctionId) window.location.href = `/auction/${auctionId}`; }}>
-                    <div className="w-16 h-12 bg-gray-100 rounded" />
-                    <div className="flex-1">
-                      <div className="font-medium hover:text-blue-600">{b.auctionId?.title || b.title || b.auctionTitle || b.item?.name || "Auction"}</div>
-                      <div className="text-xs text-gray-500">Your bid: <span className={b.youWon ? "text-green-600" : "text-gray-700"}>{b.amount ? `₹${b.amount}` : b.yourBid ? `₹${b.yourBid}` : "-"}</span>{b.current && <> • Current: ₹{b.current}</>}{b.final && <> • Final: ₹{b.final}</>}</div>
+                biddingHistory.map((b, idx) => {
+                  const title = b.auctionId?.title || b.title || b.auctionTitle || b.item?.name || "Auction";
+                  const image = b.auctionId?.item?.images?.[0] || b.auctionId?.images?.[0] || b.image || b.item?.images?.[0] || null;
+                  const imgSrc = image && (image.startsWith("http") || image.startsWith("/")) ? image : null;
+                  const auctionId = b.auctionId?._id || b.auctionId || b._id;
+                  
+                  return (
+                    <div key={b._id || b.id || idx} className="bg-gray-50 p-3 rounded border flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { if (auctionId) window.location.href = `/auction/${auctionId}`; }}>
+                      <div className="w-16 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                        {imgSrc ? (
+                          <img src={imgSrc} alt={title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                            No image
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium hover:text-blue-600">{title}</div>
+                        <div className="text-xs text-gray-500">Your bid: <span className={b.youWon ? "text-green-600" : "text-gray-700"}>{b.amount ? `₹${b.amount}` : b.yourBid ? `₹${b.yourBid}` : "-"}</span>{b.current && <> • Current: ₹{b.current}</>}{b.final && <> • Final: ₹{b.final}</>}</div>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        <div>{b.createdAt ? new Date(b.createdAt).toLocaleString() : b.when || b.time || (b.endedAt ? new Date(b.endedAt).toLocaleString() : "")}</div>
+                        <div className="mt-1"><span className="text-blue-600 text-xs hover:underline">View Auction</span></div>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      <div>{b.createdAt ? new Date(b.createdAt).toLocaleString() : b.when || b.time || (b.endedAt ? new Date(b.endedAt).toLocaleString() : "")}</div>
-                      <div className="mt-1"><span className="text-blue-600 text-xs hover:underline">View Auction</span></div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
             <div className="mt-4 text-center"><Link to="/my-bids" className="text-blue-600">View All History</Link></div>
