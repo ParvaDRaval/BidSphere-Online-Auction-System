@@ -4,49 +4,49 @@
 ![React](https://img.shields.io/badge/react-19+-blue.svg)
 ![MongoDB](https://img.shields.io/badge/mongodb-Atlas-green.svg)
 
-## 📋 Overview
+## Overview
 
   BidSphere is a comprehensive full-stack online auction platform that enables secure, transparent and real-time bidding for buyers and sellers. Built with modern web technologies, it provides a complete end-to-end auction experience with role-based access control, automated bidding, secure payments, and delivery workflows.
 
-## ✨ Key Features
+## Key Features
 
-### 🔐 Authentication & User Management
+### Authentication & User Management
 - **User Registration & Email Verification** - Secure signup with email verification
-- **Role-Based Access Control** - Buyer, Seller, and Admin roles with specific permissions
+- **Role-Based Access Control** - User and Admin roles with specific permissions
 - **Admin Dashboard** - Complete administrative control over platform operations
 - **Profile Management** - User profile updates and settings
 
-### 🏷️ Auction System
+### Auction System
 - **Create Auctions** - Sellers can create detailed auction listings with images
 - **Real-Time Bidding** - Live bidding system with automatic updates
 - **AutoBid Feature** - Automated bidding system with customizable limits
 - **Auction Management** - Complete auction lifecycle management with status tracking
 - **Winner Announcement** - Automated winner selection and notification
 
-### 💳 Payment & Financial
+### Payment & Financial
 - **Registration Fees** - Secure fee collection for platform access
-- **Payment Processing** - Integrated payment gateway for transactions
+- **Payment Processing** - UPI payments via QR codes and secure payment links
 - **Invoice Generation** - Automatic invoice creation using html2canvas
 - **Financial Tracking** - Complete transaction history and records
 
-### ⭐ Rating & Review System
+### Rating & Review System
 - **Seller Ratings** - Comprehensive rating system for seller credibility
 - **Review Management** - User reviews with CRUD operations
 - **Rating Display** - Integrated rating display in seller profiles
 
-### 📦 Delivery & Logistics
+### Delivery & Logistics
 - **Delivery Management** - Complete delivery workflow tracking
 - **Delivery MVC Architecture** - Structured delivery system with models, views, controllers
 - **Shipping Integration** - Connected with shipping providers for logistics
 
-### 🛠️ Other Features
+### Other Features
 - **Cloudinary Integration** - Cloud-based image storage and optimization
 - **QR Code Generation** - QR codes for fee registration and verification
 - **Automated Cron Jobs** - Scheduled tasks for auction status updates
 - **CORS Configuration** - Secure cross-origin resource sharing
 - **Email Notifications** - Transactional emails for key events
 
-## 🏗️ Architecture
+## Architecture
 
 ### Backend (Node.js + Express)
 ```
@@ -72,7 +72,7 @@ frontend/src/
 └── assets/         # Static assets
 ```
 
-## 🚀 Technology Stack
+## Technology Stack
 
 ### Backend Technologies
 - **Node.js 20+** - JavaScript runtime
@@ -103,7 +103,7 @@ frontend/src/
 - **Git** - Version control
 - **Render.com** - Deployment platform
 
-## 📱 Application Features in Detail
+## Application Features in Detail
 
 ### User Roles & Permissions
 
@@ -142,7 +142,7 @@ frontend/src/
 - **Email Notifications** - Automated emails for key events (auction end, winning, etc.)
 - **Winner Selection** - Automated winner announcement and notification
 
-## 🔒 Security Features
+## Security Features
 
 - **JWT Authentication** - Secure token-based authentication
 - **Password Hashing** - bcryptjs for secure password storage
@@ -151,7 +151,7 @@ frontend/src/
 - **Role-Based Access** - Secure authorization based on user roles
 - **Environment Variables** - Secure configuration management
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
@@ -159,18 +159,16 @@ frontend/src/
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📞 Support & Contact
+## Support & Contact
 
 For support, questions, or contributions, please contact:
 - Email: bidsphere.auction@gmail.com
 
-## 🌟 Live Demo
+## Live Demo
 
 The application is deployed and accessible at:
 - **Frontend**: [https://bid-sphere-online-auction-system.vercel.app](https://bid-sphere-online-auction-system.vercel.app)
 - **Backend**: [https://bidsphere-backend.onrender.com](https://bidsphere-backend.onrender.com)
 
 ---
-
-**Built with ❤️ using modern web technologies**
 
