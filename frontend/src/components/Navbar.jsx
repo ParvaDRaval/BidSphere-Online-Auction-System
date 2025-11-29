@@ -133,7 +133,7 @@ function Navbar() {
     }
     localStorage.removeItem("bidsphere_user");
     setUser(null);
-    navigate("/login");
+    navigate("/");
   };
 
   const handleAdminLogout = async () => {
