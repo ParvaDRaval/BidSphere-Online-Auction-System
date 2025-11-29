@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { getWatchlist, getBiddingHistory, getMyDeliveries, getMyPayments, createDelivery } from "../api";
+import { Link, useNavigate } from "react-router-dom";
+import { getWatchlist, getBiddingHistory, getMyDeliveries, getMyPayments } from "../api";
 import DashboardSidebar from "../components/DashboardSidebar";
 import { useUser } from "../contexts/UserContext";
-import { generateInvoicePDF } from "../utils/invoicePDF";
 /* eslint-disable react/prop-types */
 
 function StatCard({ title, value, small }) {
@@ -32,13 +31,8 @@ function WatchlistRow({
   const imgSrc = image && (image.startsWith("http") || image.startsWith("/")) ? image : null;
   
   return (
-    <div className="flex items-center gap-4 bg-white border rounded p-3 hover:shadow-md transition-shadow cursor-pointer"
-         onClick={() => {
-           if (auctionId) {
-             window.location.href = `/auction/${auctionId}`;
-           }
-         }}>
-      <div className="w-16 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+    <Link to={auctionId ? `/auction/${auctionId}` : '#'} className="flex items-center gap-4 bg-white border rounded p-3 hover:shadow-md transition-shadow">
+      <div className="w-16 h-12 bg-gray-100 rounded overflow-hidden shrink-0">
         {imgSrc ? (
           <img src={imgSrc} alt={title} className="w-full h-full object-cover" />
         ) : (
@@ -62,7 +56,7 @@ function WatchlistRow({
           </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -78,18 +72,7 @@ export default function UserDashboardBuyer() {
   const [paymentsSuccessSet, setPaymentsSuccessSet] = useState(new Set());
   const [allDeliveries, setAllDeliveries] = useState([]);
 
-  const [showDeliveryForm, setShowDeliveryForm] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [selectedAuctionId, setSelectedAuctionId] = useState(null);
-  const [deliveryName, setDeliveryName] = useState("");
-  const [deliveryPhone, setDeliveryPhone] = useState("");
-  const [deliveryStreet, setDeliveryStreet] = useState("");
-  const [deliveryCity, setDeliveryCity] = useState("");
-  const [deliveryState, setDeliveryState] = useState("");
-  const [deliveryPostalCode, setDeliveryPostalCode] = useState("");
-  const [deliveryCountry, setDeliveryCountry] = useState("");
-  const [savingDelivery, setSavingDelivery] = useState(false);
-  const [deliveryError, setDeliveryError] = useState(null);
+  
 
   // fetch lists (user is provided by context)
   useEffect(() => {
@@ -139,78 +122,14 @@ export default function UserDashboardBuyer() {
   const displayName = (user && (user.username || user.name || user.email || user.fullname)) || "First Last";
   const initials = String(displayName).split(" ").map((s) => s[0] || "").slice(0, 2).join("").toUpperCase();
 
-  function openDeliveryForm(auctionId) {
-    setSelectedAuctionId(auctionId);
-    const existingDelivery = allDeliveries.find((d) => String(d.buyerId?._id || d.buyerId) === String(user?._id));
-    if (existingDelivery?.buyerAddress) {
-      const a = existingDelivery.buyerAddress || {};
-      setDeliveryStreet(a.street || "");
-      setDeliveryCity(a.city || "");
-      setDeliveryState(a.state || "");
-      setDeliveryPostalCode(a.postalCode || "");
-      setDeliveryCountry(a.country || "");
-      setDeliveryName(a.name || user?.fullname || user?.username || "");
-      setDeliveryPhone(a.phone || user?.phone || "");
-      setShowConfirmDialog(true);
-    } else {
-      if (user?.address) {
-        setDeliveryStreet(user.address.street || "");
-        setDeliveryCity(user.address.city || "");
-        setDeliveryState(user.address.state || "");
-        setDeliveryPostalCode(user.address.postalCode || "");
-        setDeliveryCountry(user.address.country || "");
-      }
-      setDeliveryName(user?.fullname || user?.username || "");
-      setDeliveryPhone(user?.phone || "");
-      setShowDeliveryForm(true);
-    }
-    setDeliveryError(null);
-  }
+  
 
-  function editAddress() {
-    setShowConfirmDialog(false);
-    setShowDeliveryForm(true);
-  }
-
-  async function submitDeliveryWithAddress() {
-    setDeliveryError(null);
-    if (!deliveryName || !deliveryStreet || !deliveryCity || !deliveryState || !deliveryPostalCode || !deliveryCountry) {
-      setDeliveryError("Please fill all address fields");
-      return;
-    }
-    try {
-      setSavingDelivery(true);
-      const payload = {
-        auctionId: selectedAuctionId,
-        buyerAddress: { name: deliveryName, phone: deliveryPhone, street: deliveryStreet, city: deliveryCity, state: deliveryState, postalCode: deliveryPostalCode, country: deliveryCountry },
-      };
-      const res = await createDelivery(payload).catch(() => null);
-      if (res && (res.success || res.delivery)) {
-        const delRes = await getMyDeliveries().catch(() => null);
-        const deliveries = delRes?.deliveries ?? delRes ?? [];
-        const arr = Array.isArray(deliveries) ? deliveries : [];
-        setAllDeliveries(arr);
-        setDeliveriesSet(new Set(arr.map((d) => String(d.auctionId?._id || d.auctionId))));
-        setShowDeliveryForm(false);
-        setShowConfirmDialog(false);
-        setDeliveryName(""); setDeliveryPhone(""); setDeliveryStreet(""); setDeliveryCity(""); setDeliveryState(""); setDeliveryPostalCode(""); setDeliveryCountry("");
-      } else {
-        setDeliveryError(res?.message || "Failed to save");
-      }
-    } catch (err) {
-      console.error(err);
-      setDeliveryError(err?.message || "Failed to save");
-    } finally {
-      setSavingDelivery(false);
-    }
-  }
-
+  const navigate = useNavigate();
   function handleDownloadInvoice(biddingItem) {
-    const auctionData = { _id: biddingItem.auctionId?._id || biddingItem._id, title: biddingItem.auctionId?.title || biddingItem.title, description: biddingItem.auctionId?.description || biddingItem.description, endTime: biddingItem.auctionId?.endTime || biddingItem.endTime, final: biddingItem.final || biddingItem.amount, currentBid: biddingItem.auctionId?.currentBid || biddingItem.current, sellerId: biddingItem.auctionId?.sellerId || biddingItem.sellerId, item: biddingItem.auctionId?.item || biddingItem.item };
-    const userData = { fullname: user?.fullname || user?.username || displayName, email: user?.email, phone: user?.phone };
-    const delivery = allDeliveries.find((d) => String(d.auctionId?._id || d.auctionId) === String(auctionData._id));
-    const deliveryData = delivery?.buyerAddress || {};
-    generateInvoicePDF(auctionData, userData, deliveryData);
+    const auctionId = biddingItem.auctionId?._id || biddingItem._id;
+    if (!auctionId) return;
+    // navigate to invoice page where user can download or preview
+    navigate(`/invoice/${auctionId}`);
   }
 
   const activeBids = (Array.isArray(biddingHistory) ? biddingHistory.filter((b) => b.current).length : 0) || 0;
@@ -277,7 +196,7 @@ export default function UserDashboardBuyer() {
                   const auctionId = b.auctionId?._id || b.auctionId || b._id;
                   
                   return (
-                    <div key={b._id || b.id || idx} className="bg-gray-50 p-3 rounded border flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { if (auctionId) window.location.href = `/auction/${auctionId}`; }}>
+                    <div key={b._id || b.id || idx} className="bg-gray-50 p-3 rounded border flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { if (auctionId) navigate(`/auction/${auctionId}`); }}>
                       <div className="w-16 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                         {imgSrc ? (
                           <img src={imgSrc} alt={title} className="w-full h-full object-cover" />
@@ -292,8 +211,33 @@ export default function UserDashboardBuyer() {
                         <div className="text-xs text-gray-500">Your bid: <span className={b.youWon ? "text-green-600" : "text-gray-700"}>{b.amount ? `₹${b.amount}` : b.yourBid ? `₹${b.yourBid}` : "-"}</span>{b.current && <> • Current: ₹{b.current}</>}{b.final && <> • Final: ₹{b.final}</>}</div>
                       </div>
                       <div className="text-sm text-gray-500">
-                        <div>{b.createdAt ? new Date(b.createdAt).toLocaleString() : b.when || b.time || (b.endedAt ? new Date(b.endedAt).toLocaleString() : "")}</div>
-                        <div className="mt-1"><span className="text-blue-600 text-xs hover:underline">View Auction</span></div>
+                            <div>{b.createdAt ? new Date(b.createdAt).toLocaleString() : b.when || b.time || (b.endedAt ? new Date(b.endedAt).toLocaleString() : "")}</div>
+                            <div className="mt-1"><span className="text-blue-600 text-xs hover:underline">View Auction</span></div>
+                            {/* Actions for won items: pending payment and delivery management */}
+                            {b.youWon && (
+                              <div className="mt-3 flex flex-col gap-2">
+                                {!paymentsSuccessSet.has(String(auctionId)) ? (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); if (auctionId) navigate(`/auction/${auctionId}/pay`); }}
+                                    className="w-full py-2 bg-red-600 text-white rounded text-sm font-semibold"
+                                  >
+                                    Pay Now • ₹{b.final || b.amount || displayName}
+                                  </button>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <span className="inline-block px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Paid</span>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(b); }} className="text-xs text-blue-600 hover:underline">Download Invoice</button>
+                                  </div>
+                                )}
+
+                                {/* Delivery actions: route to DeliveryCreate page */}
+                                {deliveriesSet.has(String(auctionId)) ? (
+                                  <button onClick={(e) => { e.stopPropagation(); navigate(`/delivery/create/${auctionId}`); }} className="w-full py-2 border rounded text-sm">Manage Delivery</button>
+                                ) : (
+                                  <button onClick={(e) => { e.stopPropagation(); navigate(`/delivery/create/${auctionId}`); }} className="w-full py-2 border rounded text-sm">Add Delivery Address</button>
+                                )}
+                              </div>
+                            )}
                       </div>
                     </div>
                   );

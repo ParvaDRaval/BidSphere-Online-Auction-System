@@ -23,6 +23,7 @@ import Watchlist from "./pages/Watchlist";
 import UserDashboardBuyer from "./pages/UserDashboardBuyer";
 import PayFees from "./pages/PayFees";
 import DeliveryCreate from "./pages/DeliveryCreate";
+import InvoicePage from "./pages/Invoice";
 import RegistrationFee from "./pages/RegistrationFee";
 import Contact from "./pages/contact";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -73,6 +74,7 @@ function App() {
           element={<RegistrationFee />}
         />
         <Route path="/auction/:id/pay" element={<PayFees />} />
+        <Route path="/invoice/:auctionId" element={<InvoicePage />} />
         <Route
           path="/delivery/create/:auctionId"
           element={<DeliveryCreate />}
