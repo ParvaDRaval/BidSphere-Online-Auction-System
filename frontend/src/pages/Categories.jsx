@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import CATEGORIES from "../constants/categories";
+// Preload all category images so Vite includes them in the build
+const categoryImages = import.meta.glob('../assets/categories/*.{png,jpg,jpeg,svg}', { eager: true, as: 'url' });
 import { listAuctions } from "../api";
 
 function CategoryCard({ cat, onSelect }) {
@@ -12,17 +14,28 @@ function CategoryCard({ cat, onSelect }) {
     const v = String(imgVal).trim();
     if (v.startsWith("http") || v.startsWith("/")) return v;
 
-    // If the value already references an assets path or is a relative path, try to resolve it directly
-    const looksLikeAssetPath = v.startsWith("assets/") || v.startsWith("src/") || v.startsWith("./") || v.startsWith("../") || v.includes("/assets/");
+    // Try to find a preloaded image by filename (case-insensitive)
+    const keys = Object.keys(categoryImages || {});
+    // exact filename match (with or without path)
+    const filename = v.split(/[\\/]/).pop();
+    const nameNoExt = filename.replace(/\.[^.]+$/, "").toLowerCase();
+
+    let match = keys.find((k) => k.toLowerCase().endsWith(`/${filename.toLowerCase()}`));
+    if (!match) {
+      match = keys.find((k) => k.toLowerCase().includes(`/${nameNoExt}.`));
+    }
+    if (match) return categoryImages[match];
+
+    // Fallback: if v looks like a relative path that points to assets, try to resolve it
     try {
-      if (looksLikeAssetPath) {
+      if (v.startsWith("assets/") || v.startsWith("src/") || v.startsWith("./") || v.startsWith("../") || v.includes("/assets/")) {
         return new URL(v, import.meta.url).href;
       }
-      // Otherwise assume it's a filename under src/assets/categories
-      return new URL(`../assets/categories/${v}`, import.meta.url).href;
     } catch (e) {
-      return null;
+      // ignore
     }
+
+    return null;
   };
   const imgSrc = resolveCategoryImage(img);
 
