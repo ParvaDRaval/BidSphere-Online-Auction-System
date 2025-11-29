@@ -81,9 +81,11 @@ function Home() {
 
   useEffect(() => {
     // Prefer the centralized user from context; fall back to localStorage when unavailable.
-    if (ctxUser) {
+    // Check if ctxUser has an actual user (not {user: null})
+    const actualUser = ctxUser?.user || ctxUser;
+    if (actualUser && typeof actualUser === 'object' && actualUser.id) {
       setShowRegisterCTA(false);
-      try { localStorage.setItem("bidsphere_user", JSON.stringify(ctxUser)); } catch (e) { /* ignore */ }
+      try { localStorage.setItem("bidsphere_user", JSON.stringify(actualUser)); } catch (e) { /* ignore */ }
       return;
     }
 
